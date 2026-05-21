@@ -27,6 +27,23 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     @endif
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    @endif
+    @if(session('import_errors'))
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <strong>Detail baris gagal:</strong>
+        <ul class="mb-0 mt-2">
+            @foreach(session('import_errors') as $err)
+            <li>{{ $err }}</li>
+            @endforeach
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    @endif
     <div class="row mb-3">
         <!-- Form Pencarian -->
         <div class="col-md-8">
@@ -69,7 +86,50 @@
             <div class="card">
                 <div class="card-body">
                     <h4 class="card-title">Jadwal Praktikum</h4>
-                    <a href="{{ route('jadwal.create') }}" class="btn btn-rounded btn-primary mb-3">Tambah Jadwal</a>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <a href="{{ route('jadwal.create') }}" class="btn btn-rounded btn-primary">Tambah Jadwal</a>
+                        <button type="button" class="btn btn-rounded btn-success" data-bs-toggle="modal"
+                            data-bs-target="#importJadwalModal">
+                            Import CSV
+                        </button>
+                    </div>
+                    <div class="modal fade" id="importJadwalModal" tabindex="-1" aria-labelledby="importJadwalModalLabel"
+                        aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="importJadwalModalLabel">Import Jadwal dari CSV</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Close"></button>
+                                </div>
+                                <form action="{{ route('jadwal.import') }}" method="POST" enctype="multipart/form-data">
+                                    @csrf
+                                    <div class="modal-body">
+                                        <p class="text-muted small">
+                                            Setiap baris CSV akan membuat <strong>8 jadwal mingguan</strong> (sama seperti tambah manual).
+                                            Kolom wajib: <code>lab_id</code>, <code>program_id</code>, <code>matakuliah_id</code>, <code>tanggal</code>, <code>jam</code>.
+                                        </p>
+                                        <div class="mb-3">
+                                            <label for="csv_file" class="form-label">File CSV</label>
+                                            <input type="file" name="csv_file" id="csv_file" class="form-control"
+                                                accept=".csv,.txt" required>
+                                            @error('csv_file')
+                                            <div class="text-danger small mt-1">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                        <a href="{{ asset('templates/jadwal_import_template.csv') }}" class="small" download>
+                                            Download template CSV
+                                        </a>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-rounded btn-secondary"
+                                            data-bs-dismiss="modal">Batal</button>
+                                        <button type="submit" class="btn btn-rounded btn-primary">Import</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                     <table class="table">
                         <thead>

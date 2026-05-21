@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('ta', TaController::class);
     Route::resource('laboratorium', LaboratoriumController::class);
     Route::resource('matkul', MataKuliahController::class);
+    Route::post('/jadwal/import', [JadwalController::class, 'import'])->name('jadwal.import');
     Route::resource('jadwal', JadwalController::class);
     Route::resource('pemakaian', PemakaianController::class);
     Route::post('/pengembalian/{id}', [PemakaianController::class, 'storePemakaian'])->name('pengembalian.store');
