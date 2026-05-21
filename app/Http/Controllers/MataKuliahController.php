@@ -33,15 +33,14 @@ class MataKuliahController extends Controller
             return redirect()->back()->with('error', 'Tahun Akademik aktif belum disetting');
         }
         
-        $request->validate([
+        $validated = $request->validate([
             'matakuliah' => 'required|string|max:255',
             'dosen' => 'required|string|max:255',
             'program_id' => 'required|exists:program,id',
             'nomor' => 'nullable',
-            'ta_id' => $taAktif,
         ]);
-        
-        Matkul::create($request->all());
+
+        Matkul::create(array_merge($validated, ['ta_id' => $taAktif->id]));
 
         return redirect()->route('matkul.index')->with('success', 'Mata kuliah berhasil ditambahkan');
     }
