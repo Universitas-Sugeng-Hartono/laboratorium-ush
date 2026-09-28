@@ -12,6 +12,7 @@ use App\Models\Alat;
 use App\Models\Program;
 use App\Models\Laboratorium;
 use App\Models\Pemakaian;
+use App\Services\WahaClient;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -25,18 +26,7 @@ class HalamanController extends Controller
         return view('halamanawal');
     }
 
-    // public function JadwalLab()
-    // {
-    //     $hariIni = Carbon::now()->locale('id')->isoFormat('dddd');
-    //     $jadwalHariIni = Jadwal::whereDate('jadwal', Carbon::today())->get();
-    //     $jurnal = Jurnal::whereIn('jadwal_id', $jadwalHariIni->pluck('id'))
-    //                     ->get()
-    //                     ->keyBy('jadwal_id');
 
-    //     $scheduledTimes = $jadwalHariIni->map(fn($jadwal) => Carbon::parse($jadwal->jadwal)->format('H:i'))->toArray();
-
-    //     return view('welcome', compact('jadwalHariIni', 'hariIni', 'jurnal', 'scheduledTimes'));
-    // }
 
     public function JadwalLab(Request $request)
     {
@@ -45,12 +35,17 @@ class HalamanController extends Controller
             : Carbon::today();
 
         $hariIni = $tanggal->locale('id')->isoFormat('dddd');
-        $jadwalHariIni = Jadwal::whereDate('jadwal', $tanggal)->get();
+        $jadwalHariIni = Jadwal::with(['matkulId', 'labId', 'programId'])
+            ->whereDate('jadwal', $tanggal)
+            ->orderBy('jadwal', 'asc')
+            ->get();
+
         $jurnal = Jurnal::whereIn('jadwal_id', $jadwalHariIni->pluck('id'))
             ->get()
             ->keyBy('jadwal_id');
+
         $scheduledTimes = $jadwalHariIni->map(fn($jadwal) => Carbon::parse($jadwal->jadwal)->format('H:i'))->toArray();
-        return view('welcome', compact('jadwalHariIni', 'hariIni', 'jurnal', 'scheduledTimes'));
+        return view('welcome', compact('jadwalHariIni', 'hariIni', 'jurnal', 'scheduledTimes', 'tanggal'));
     }
 
 
@@ -109,8 +104,10 @@ class HalamanController extends Controller
             $ttdPath = 'signatures/' . $imageName;
         }
 
-        $jam_mulai = Carbon::parse($request->jam_mulai);
-        $jam_selesai = $jam_mulai->addMinutes(170);
+        $jamSelesai = $request->jam_selesai;
+        if (!$jamSelesai) {
+            $jamSelesai = Carbon::parse($request->jam_mulai)->addMinutes(170)->format('H:i');
+        }
 
         $jurnal = Jurnal::create([
             'matakuliah_id' => $request->matakuliah_id,
@@ -119,7 +116,7 @@ class HalamanController extends Controller
             'materi' => $request->materi,
             'tanggal' => $request->tanggal,
             'jam_mulai' => $request->jam_mulai,
-            'jam_selesai' => $jam_selesai->format('H:i'),
+            'jam_selesai' => $jamSelesai,
             'ttd' => $ttdPath,
             'jumlah' => $request->jumlah,
             'lab_id' => $request->lab_id,
@@ -156,15 +153,32 @@ class HalamanController extends Controller
     public function storeTamu(Request $request)
     {
         $request->validate([
-            'tamu' => 'nullable|string',
-            'hp' => 'required|string',
-            'jumlah_tamu' => 'required|string',
+            'tamu' => 'required|string|max:255',
+            'kategori_tamu' => 'required|string|max:60',
+            'identitas' => 'nullable|string|max:50',
+            'instansi' => 'nullable|string|max:150',
+            'hp' => 'required|string|max:20',
+            'jumlah_tamu' => 'required|integer|min:1',
+            'lab_id' => 'required|exists:laboratorium,id',
             'tanggal' => 'required|date',
             'jam' => 'required',
             'jamselesai' => 'required',
-            'keperluan' => 'required',
+            'kategori_keperluan' => 'required|string|max:100',
+            'keperluan' => 'required|string',
             'ttd' => 'required|string',
-            'lab_id' => 'nullable|string',
+            'setuju_k3' => 'accepted',
+        ], [
+            'tamu.required' => 'Nama lengkap tamu wajib diisi.',
+            'kategori_tamu.required' => 'Kategori pengunjung wajib dipilih.',
+            'hp.required' => 'Nomor WhatsApp / Handphone wajib diisi.',
+            'jumlah_tamu.required' => 'Jumlah tamu wajib diisi.',
+            'jumlah_tamu.integer' => 'Jumlah tamu harus berupa angka.',
+            'jumlah_tamu.min' => 'Jumlah tamu minimal 1 orang.',
+            'lab_id.required' => 'Laboratorium tujuan wajib dipilih.',
+            'kategori_keperluan.required' => 'Kategori keperluan wajib dipilih.',
+            'keperluan.required' => 'Rincian keperluan wajib diisi.',
+            'ttd.required' => 'Tanda tangan digital wajib dibubuhkan.',
+            'setuju_k3.accepted' => 'Anda wajib menyetujui tata tertib dan keselamatan kerja (K3) laboratorium.',
         ]);
 
         $ttdPath = null;
@@ -178,30 +192,55 @@ class HalamanController extends Controller
         }
 
         Absensi::create([
-            'tamu' => $request->tamu,
-            'hp' => $request->hp,
-            'jumlah_tamu' => $request->jumlah_tamu,
+            'tamu' => trim($request->tamu),
+            'kategori_tamu' => $request->kategori_tamu,
+            'identitas' => $request->identitas ? trim($request->identitas) : null,
+            'instansi' => $request->instansi ? trim($request->instansi) : null,
+            'hp' => trim($request->hp),
+            'jumlah_tamu' => (int) $request->jumlah_tamu,
+            'kategori_keperluan' => $request->kategori_keperluan,
+            'keperluan' => trim($request->keperluan),
             'tanggal' => $request->tanggal,
             'jam' => $request->jam,
             'jamselesai' => $request->jamselesai,
-            'keperluan' => $request->keperluan,
             'ttd' => $ttdPath,
             'lab_id' => $request->lab_id,
         ]);
 
-        return redirect()->route('awal')->with('success', 'Daftar Hadir Tamu berhasil dibuat!');
+        $lab = Laboratorium::find($request->lab_id);
+
+        return redirect()->route('tamuumum')
+            ->with('success', 'Presensi kunjungan laboratorium berhasil disimpan. Selamat beraktivitas di laboratorium USH!')
+            ->with('tamu_success', [
+                'nama' => trim($request->tamu),
+                'kategori' => $request->kategori_tamu,
+                'identitas' => $request->identitas ? trim($request->identitas) : '-',
+                'instansi' => $request->instansi ? trim($request->instansi) : '-',
+                'lab' => $lab ? $lab->laboratorium : 'Laboratorium USH',
+                'tanggal' => \Carbon\Carbon::parse($request->tanggal)->locale('id')->isoFormat('dddd, D MMMM Y'),
+                'jam' => $request->jam . ' - ' . $request->jamselesai . ' WIB',
+                'jumlah' => $request->jumlah_tamu . ' Orang',
+                'keperluan' => $request->kategori_keperluan,
+            ]);
     }
 
     public function JadwalPinjam(Request $request)
     {
-        $query = Pemakaian::with(['jadwalId', 'programId', 'matkulId', 'labId']);
+        $query = Pemakaian::with(['jadwalId', 'programId', 'matkulId', 'labId'])->orderBy('id', 'desc');
 
         if ($request->has('tgl_peminjaman') && !empty($request->tgl_peminjaman)) {
             $query->whereDate('tgl_peminjaman', $request->tgl_peminjaman);
         }
 
         $pemakaian = $query->get();
-        return view('pemakaianlihat', compact('pemakaian'));
+        $totalPinjam = Pemakaian::count();
+        $totalSetuju = Pemakaian::where('keterangan', 'setuju')->count();
+        $totalProses = Pemakaian::where(function ($q) {
+            $q->whereIn('keterangan', ['proses', 'ditolak'])
+                ->orWhereNull('keterangan');
+        })->count();
+
+        return view('pemakaianlihat', compact('pemakaian', 'totalPinjam', 'totalSetuju', 'totalProses'));
     }
 
 
@@ -221,197 +260,190 @@ class HalamanController extends Controller
             ->get();
 
         return view('peminjaman.pdf1', compact('peminjaman', 'alats', 'bahans'));
-        $pdf = PDF::loadView('peminjaman.pdf', compact('peminjaman'));
     }
 
     public function sessionCreatePeminjaman()
     {
-        $programs = Program::select('id', 'program')->get();
-        $matkul = Matkul::select('id', 'matakuliah')->get();
-        $laboratorium = Laboratorium::all();
-        $bahans = Bahan::all();
-        $alats = Alat::all();
+        $programs = Program::select('id', 'program')->orderBy('program', 'asc')->get();
+        $matkul = Matkul::select('id', 'matakuliah', 'program_id')->orderBy('matakuliah', 'asc')->get();
+        $laboratorium = Laboratorium::orderBy('laboratorium', 'asc')->get();
+        $bahans = Bahan::select('id', 'lab_id', 'bahan', 'jumlah', 'satuan')->orderBy('bahan', 'asc')->get();
+        $alats = Alat::select('id', 'lab_id', 'alat', 'jumlah', 'kondisi', 'status')->orderBy('alat', 'asc')->get();
         return view('peminjaman', compact('laboratorium', 'programs', 'matkul', 'bahans', 'alats'));
     }
 
     public function storePeminjaman(Request $request)
     {
         $request->validate([
-            'nama' => 'required|string',
-            'lab_id' => 'required|integer',
+            'nama' => 'required|string|max:255',
+            'nomor' => 'required|string|max:30',
+            'lab_id' => 'required|integer|exists:laboratorium,id',
             'matakuliah_id' => 'nullable|integer',
             'program_id' => 'nullable|integer',
             'keperluan' => 'required|string',
             'tgl_peminjaman' => 'required|date',
-            'tgl_pengembalian' => 'required|date',
+            'tgl_pengembalian' => 'required|date|after_or_equal:tgl_peminjaman',
             'alat_id' => 'nullable|array',
-            'alat_id.*' => 'integer',
+            'alat_id.*' => 'integer|exists:alat,id',
+            'jumlah_alat' => 'nullable|array',
             'jumlah_alat.*' => 'nullable|integer|min:1',
             'bahan_id' => 'nullable|array',
-            'bahan_id.*' => 'integer',
+            'bahan_id.*' => 'integer|exists:bahan,id',
+            'jumlah_bahan' => 'nullable|array',
             'jumlah_bahan.*' => 'nullable|integer|min:1',
-            'ttd' => 'nullable',
-            'nomor' => 'required',
+            'ttd' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($request) {
-            $ttdPath = null;
-            if ($request->ttd) {
-                $image = str_replace(['data:image/png;base64,', ' '], ['', '+'], $request->ttd);
-                $imageName = 'signature_' . time() . '.png';
-                Storage::disk('public')->put('signaturespeminjaman/' . $imageName, base64_decode($image));
-                $ttdPath = 'signaturespeminjaman/' . $imageName;
-            }
+        if (!$this->peminjamanHasItem($request)) {
+            return redirect()->back()->withInput()->with('error', 'Pilih minimal satu alat atau satu bahan.');
+        }
 
-            $pemakaian = Pemakaian::create([
-                'nama' => $request->nama,
-                'lab_id' => $request->lab_id,
-                'matakuliah_id' => $request->matakuliah_id,
-                'program_id' => $request->program_id,
-                'keperluan' => $request->keperluan,
-                'tgl_peminjaman' => $request->tgl_peminjaman,
-                'tgl_pengembalian' => $request->tgl_pengembalian,
-                'nomor' => $request->nomor,
-                'ttd' => $ttdPath,
-            ]);
+        try {
+            DB::transaction(function () use ($request) {
+                $ttdPath = null;
+                if ($request->filled('ttd') && str_contains($request->ttd, 'base64')) {
+                    $image = str_replace(['data:image/png;base64,', ' '], ['', '+'], $request->ttd);
+                    $imageName = 'signature_' . uniqid('', true) . '.png';
+                    Storage::disk('public')->put('signaturespeminjaman/' . $imageName, base64_decode($image));
+                    $ttdPath = 'signaturespeminjaman/' . $imageName;
+                }
 
-            if ($request->alat_id) {
-                foreach ($request->alat_id as $index => $alatId) {
-                    $jumlah = $request->jumlah_alat[$index] ?? 0;
-                    $alat = Alat::findOrFail($alatId);
+                $pemakaian = Pemakaian::create([
+                    'nama' => $request->nama,
+                    'nomor' => $request->nomor,
+                    'lab_id' => $request->lab_id,
+                    'matakuliah_id' => $request->matakuliah_id,
+                    'program_id' => $request->program_id,
+                    'keperluan' => $request->keperluan,
+                    'tgl_peminjaman' => $request->tgl_peminjaman,
+                    'tgl_pengembalian' => $request->tgl_pengembalian,
+                    'ttd' => $ttdPath,
+                    'keterangan' => 'proses',
+                    'status_pengembalian' => 'belum',
+                ]);
 
-                    if ($alat->jumlah >= $jumlah) {
-                        $alat->decrement('jumlah', $jumlah);
+                if ($request->filled('alat_id') && is_array($request->alat_id)) {
+                    $reservedAlat = [];
+                    foreach ($request->alat_id as $index => $alatId) {
+                        $jumlah = (int) ($request->jumlah_alat[$index] ?? 0);
+                        if ($jumlah <= 0) {
+                            continue;
+                        }
+
+                        $alat = Alat::where('id', $alatId)->lockForUpdate()->firstOrFail();
+                        $reservedAlat[$alatId] = ($reservedAlat[$alatId] ?? 0) + $jumlah;
+
+                        if ((int) $alat->jumlah < $reservedAlat[$alatId]) {
+                            throw new \Exception("Stok alat tidak mencukupi untuk '{$alat->alat}'. Sisa stok tersedia: {$alat->jumlah}.");
+                        }
+
                         DB::table('pemakaian_alat')->insert([
                             'pemakaian_id' => $pemakaian->id,
                             'alat_id' => $alatId,
                             'jumlah_pinjam' => $jumlah,
+                            'created_at' => now(),
+                            'updated_at' => now(),
                         ]);
-                    } else {
-                        throw new \Exception("Stok alat tidak mencukupi untuk {$alat->alat}");
                     }
                 }
-            }
 
-            if ($request->bahan_id) {
-                foreach ($request->bahan_id as $index => $bahanId) {
-                    $jumlah = $request->jumlah_bahan[$index] ?? 0;
-                    $bahan = Bahan::findOrFail($bahanId);
+                if ($request->filled('bahan_id') && is_array($request->bahan_id)) {
+                    $reservedBahan = [];
+                    foreach ($request->bahan_id as $index => $bahanId) {
+                        $jumlah = (int) ($request->jumlah_bahan[$index] ?? 0);
+                        if ($jumlah <= 0) {
+                            continue;
+                        }
 
-                    if ($bahan->jumlah >= $jumlah) {
-                        $bahan->decrement('jumlah', $jumlah);
-                        DB::table('bahan_pemakaian')->insert([
+                        $bahan = Bahan::where('id', $bahanId)->lockForUpdate()->firstOrFail();
+                        $reservedBahan[$bahanId] = ($reservedBahan[$bahanId] ?? 0) + $jumlah;
+
+                        if ((int) $bahan->jumlah < $reservedBahan[$bahanId]) {
+                            throw new \Exception("Stok bahan tidak mencukupi untuk '{$bahan->bahan}'. Sisa stok tersedia: {$bahan->jumlah}.");
+                        }
+
+                        DB::table('pemakaian_bahan')->insert([
                             'pemakaian_id' => $pemakaian->id,
                             'bahan_id' => $bahanId,
                             'jumlah_pakai' => $jumlah,
+                            'created_at' => now(),
+                            'updated_at' => now(),
                         ]);
-                    } else {
-                        throw new \Exception("Stok bahan tidak mencukupi untuk {$bahan->bahan}");
                     }
                 }
-            }
-        });
+            });
 
-        return view('pemakaianlihat')->with('success', 'Peminjaman berhasil disimpan!');
+            return redirect('/lihatpeminjaman')->with('success', 'Permohonan peminjaman laboratorium berhasil dikirim! Silakan pantau status persetujuan pada tabel.');
+        } catch (\Exception $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
     }
 
     public function StokOpname()
     {
-        $bahan = Bahan::all();
-        return view('stokopname', compact('bahan'));
+        $bahan = Bahan::orderBy('bahan', 'asc')->get();
+        $totalBahan = $bahan->count();
+        $totalStok = $bahan->sum('jumlah');
+        return view('stokopname', compact('bahan', 'totalBahan', 'totalStok'));
     }
 
     public function KirimWA(Request $request, $id)
     {
         $jadwal = Jadwal::findOrFail($id);
+        $result = $this->sendJadwalReminder($jadwal);
 
-        $curl = curl_init();
-
-        // Nomor tujuan (format internasional 62)
-        $destination = $jadwal->matkulId->nomor;
-
-        // Pesan teks (tanpa heredoc)
-        $stringPesanan =
-            "Yth. Bapak/Ibu {$jadwal->matkulId->dosen}.\n" .
-            "Jadwal {$jadwal->labId->laboratorium} - {$jadwal->jadwal}.\n" .
-            "Mata Kuliah {$jadwal->matkulId->matakuliah}\n" .
-            "Dimohon untuk mengisi E-Journal Laboratorium sebelum meninggalkan ruangan {$jadwal->labId->laboratorium}\n" .
-            "https://laboratorium.sugenghartono.ac.id/jadwallab \n" .
-            "Terima Kasih Banyak";
-
-        curl_setopt_array($curl, [
-            CURLOPT_URL => 'https://api.fonnte.com/send',
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => [
-                'target' => $destination,
-                'message' => $stringPesanan,
-                'delay' => 2,
-                'typing' => false,
-                'countryCode' => '62',
-            ],
-            CURLOPT_HTTPHEADER => [
-                'Authorization: cb4br9SeSXNT4V6Xi7LP'
-            ],
-        ]);
-
-        $response = curl_exec($curl);
-
-        if (curl_errno($curl)) {
-            $error_msg = curl_error($curl);
-            curl_close($curl);
-            return redirect()->back()->with('error', 'Gagal mengirim WhatsApp: ' . $error_msg);
+        if (!$result['ok']) {
+            return redirect()->back()->with('error', 'Gagal mengirim WhatsApp: ' . $result['error']);
         }
-
-        curl_close($curl);
 
         return redirect()->back()->with('success', 'Pesan WhatsApp berhasil dikirim!');
     }
 
-    public function AutoKirimWA()
+    public function AutoKirimWA(Request $request)
     {
-        date_default_timezone_set('Asia/Jakarta'); // penting di shared hosting
+        if ($request->query('token') !== null) {
+            abort(403, 'Akses ditolak. Token cron dikirim lewat header X-Cron-Token.');
+        }
 
-        $nowDate = date('Y-m-d');
-        $nowTime = date('H:i');
+        if (!$this->cronAuthorized($request)) {
+            abort(403, 'Akses ditolak. Token tidak valid.');
+        }
 
-        // Ambil semua jadwal hari ini yang belum pernah dikirimi WA
-        $jadwals = Jadwal::whereDate('jadwal', $nowDate)
-            ->whereNull('wa_sent_at')  // agar tidak kirim 2x
+        date_default_timezone_set('Asia/Jakarta');
+
+        $now = Carbon::now('Asia/Jakarta');
+        $jadwals = Jadwal::with(['matkulId', 'labId'])
+            ->whereDate('jadwal', $now->toDateString())
+            ->whereNull('wa_sent_at')
             ->get();
 
         if ($jadwals->isEmpty()) {
             return "Tidak ada jadwal hari ini atau semua sudah terkirim.";
         }
 
+        $sent = 0;
         foreach ($jadwals as $jadwal) {
+            $jadwalTime = Carbon::parse($jadwal->jadwal, 'Asia/Jakarta');
+            $diffMinutes = $now->diffInMinutes($jadwalTime, false);
+            if ($diffMinutes > 0 || $diffMinutes < -5) {
+                continue;
+            }
 
-            // Cek apakah waktu jadwal sudah sama dengan waktu saat ini (format HH:MM)
-            $jadwalTime = date('H:i', strtotime($jadwal->jadwal));
-
-            if ($jadwalTime === $nowTime) {
-
-                // Panggil function KirimWA yang sudah ada
-                $this->KirimWA(request(), $jadwal->id);
-
-                // Tandai agar tidak kirim 2x
-                $jadwal->update([
-                    'wa_sent_at' => now()
-                ]);
+            $result = $this->sendJadwalReminder($jadwal);
+            if ($result['ok']) {
+                $jadwal->update(['wa_sent_at' => now()]);
+                $sent++;
             }
         }
 
-        return "Proses auto WA selesai.";
+        return "Proses auto WA selesai. Terkirim: {$sent}.";
     }
 
     /**
      * API untuk cronjob: kirim WA reminder ke dosen yang belum menulis jurnal.
      * Hanya mengirim untuk jadwal yang waktunya sudah lewat.
+     *
+     * Autentikasi lewat header X-Cron-Token, bukan query string.
      *
      * Parameter opsional (query string):
      * - tanggal    : tanggal spesifik (format Y-m-d), contoh: ?tanggal=2026-04-15
@@ -424,6 +456,14 @@ class HalamanController extends Controller
      */
     public function ReminderJurnalWA(Request $request)
     {
+        if ($request->query('token') !== null) {
+            abort(403, 'Akses ditolak. Token cron dikirim lewat header X-Cron-Token.');
+        }
+
+        if (!$this->cronAuthorized($request)) {
+            abort(403, 'Akses ditolak. Token tidak valid.');
+        }
+
         date_default_timezone_set('Asia/Jakarta');
 
         $nowTime = Carbon::now();
@@ -464,7 +504,7 @@ class HalamanController extends Controller
             $query->whereDate('jadwal', $dates[0]);
         } else {
             $query->whereDate('jadwal', '>=', $dates[0])
-                  ->whereDate('jadwal', '<=', end($dates));
+                ->whereDate('jadwal', '<=', end($dates));
         }
 
         $jadwals = $query->get();
@@ -534,35 +574,9 @@ class HalamanController extends Controller
                 "{$linkJadwal}\n\n" .
                 "Terima kasih atas perhatiannya.";
 
-            $curl = curl_init();
+            $result = app(WahaClient::class)->send($destination, $stringPesanan);
 
-            curl_setopt_array($curl, [
-                CURLOPT_URL => 'https://api.fonnte.com/send',
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => [
-                    'target' => $destination,
-                    'message' => $stringPesanan,
-                    'delay' => 2,
-                    'typing' => false,
-                    'countryCode' => '62',
-                ],
-                CURLOPT_HTTPHEADER => [
-                    'Authorization: ' . env('FONNTE_TOKEN', 'cb4br9SeSXNT4V6Xi7LP')
-                ],
-            ]);
-
-            $response = curl_exec($curl);
-            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            $error = curl_errno($curl) ? curl_error($curl) : null;
-            curl_close($curl);
-
-            if ($error) {
+            if (!$result['ok']) {
                 $results['gagal']++;
                 $results['detail'][] = [
                     'jadwal_id' => $jadwal->id,
@@ -570,7 +584,7 @@ class HalamanController extends Controller
                     'matakuliah' => $matakuliah,
                     'tanggal' => $jadwalDate,
                     'status' => 'gagal',
-                    'keterangan' => $error,
+                    'keterangan' => $result['error'],
                 ];
             } else {
                 $results['terkirim']++;
@@ -581,131 +595,74 @@ class HalamanController extends Controller
                     'tanggal' => $jadwalDate,
                     'nomor' => $destination,
                     'status' => 'terkirim',
-                    'response' => json_decode($response, true),
                 ];
             }
 
-            // Delay antar pesan agar tidak spam
-            usleep(1000000); // 1 detik
+            usleep(1000000);
         }
 
         return response()->json($results);
     }
 
-
-    /*
-    public function KirimWA(Request $request, $id)
+    private function peminjamanHasItem(Request $request): bool
     {
-        $jadwal = Jadwal::findOrFail($id);
-        $curl = curl_init();
-        $ownNumber = '6281575946172';
-        $urlEasyWa = 'https://wa.sugenghartono.cloud/sendmessage?number=' . $ownNumber;
-        $destination = $jadwal->matkulId->nomor . '@s.whatsapp.net';
-        $stringPesanan = <<<STR
-Yth. Bapak/Ibu {$jadwal->matkulId->dosen}.
-Jadwal {$jadwal->labId->laboratorium} - {$jadwal->jadwal}.
-Mata Kuliah {$jadwal->matkulId->matakuliah}
-Dimohon untuk mengisi E-Journal Laboratorium sebelum meninggalkan ruangan {$jadwal->labId->laboratorium}
-https://laboratorium.sugenghartono.ac.id/jadwallab
-Terima Kasih Banyak
-STR;
-        $message = [
-            'to' => $destination,
-            'message' => [
-                'text' => $stringPesanan
-            ],
-        ];
-        $sendMessage = json_encode($message, 1);
+        $alatIds = $request->input('alat_id', []);
+        $alatQty = $request->input('jumlah_alat', []);
+        if (is_array($alatIds)) {
+            foreach ($alatIds as $index => $alatId) {
+                if ($alatId && (int) ($alatQty[$index] ?? 0) > 0) {
+                    return true;
+                }
+            }
+        }
 
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $urlEasyWa,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => $sendMessage,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-            ],
-        ]);
+        $bahanIds = $request->input('bahan_id', []);
+        $bahanQty = $request->input('jumlah_bahan', []);
+        if (is_array($bahanIds)) {
+            foreach ($bahanIds as $index => $bahanId) {
+                if ($bahanId && (int) ($bahanQty[$index] ?? 0) > 0) {
+                    return true;
+                }
+            }
+        }
 
-        $response = curl_exec($curl);
-        curl_close($curl);
-        return redirect()->back()->with('success', 'Pesan WhatsApp berhasil dikirim!');
+        return false;
     }
-    */
 
-    //     public function KirimWA(Request $request, $id)
-//     {
-//         $jadwal = Jadwal::findOrFail($id);
+    private function cronAuthorized(Request $request): bool
+    {
+        $secret = (string) env('CRON_SECRET', '');
+        if ($secret === '') {
+            return false;
+        }
 
-    //         switch ($jadwal->program_id) {
-//             case 1:
-//                 $ownNumber = '6281234567890'; //bisdig
-//                 break;
-//             case 2:
-//                 $ownNumber = '6282345678901'; //informatika
-//                 break;
-//             case 3:
-//                 $ownNumber = '6283456789012'; //Gizi
-//                 break;
-//             case 4:
-//                 $ownNumber = '6283456789012'; //Tekpang
-//                 break;
-//             case 5:
-//                 $ownNumber = '6283456789012'; //Hukum
-//                 break;
-//             case 6:
-//                 $ownNumber = '6283456789012'; //mbi
-//                 break;
-//             default:
-//                 $ownNumber = '6281575946172';
-//                 break;
-//         }
+        $given = (string) $request->header('X-Cron-Token', '');
+        if ($given === '') {
+            $given = (string) $request->bearerToken();
+        }
 
-    //         $curl = curl_init();
-//         $urlEasyWa = 'https://wa.sugenghartono.cloud/sendmessage?number=' . $ownNumber;
-//         $destination = $jadwal->matkulId->nomor . '@s.whatsapp.net';
+        return $given !== '' && hash_equals($secret, $given);
+    }
 
-    //         $stringPesanan = <<<STR
-// Yth. Bapak/Ibu {$jadwal->matkulId->dosen}.
-// Jadwal {$jadwal->labId->laboratorium} - {$jadwal->jadwal}.
-// Mata Kuliah {$jadwal->matkulId->matakuliah}
-// Dimohon untuk mengisi E-Journal Laboratorium sebelum meninggalkan ruangan {$jadwal->labId->laboratorium}
-// https://laboratorium.sugenghartono.ac.id/jadwallab
-// Terima Kasih Banyak
-// STR;
+    private function sendJadwalReminder(Jadwal $jadwal): array
+    {
+        $nomor = optional($jadwal->matkulId)->nomor;
+        if (!$nomor) {
+            return ['ok' => false, 'error' => 'Nomor WhatsApp dosen tidak ditemukan.'];
+        }
 
-    //         $message = [
-//             'to' => $destination,
-//             'message' => [
-//                 'text' => $stringPesanan
-//             ],
-//         ];
+        $dosen = optional($jadwal->matkulId)->dosen ?? 'Bapak/Ibu';
+        $matkul = optional($jadwal->matkulId)->matakuliah ?? '-';
+        $lab = optional($jadwal->labId)->laboratorium ?? '-';
+        $text =
+            "Yth. Bapak/Ibu {$dosen}.\n" .
+            "Jadwal {$lab} - {$jadwal->jadwal}.\n" .
+            "Mata Kuliah {$matkul}\n" .
+            "Dimohon untuk mengisi E-Journal Laboratorium sebelum meninggalkan ruangan {$lab}\n" .
+            "https://laboratorium.sugenghartono.ac.id/jadwallab\n" .
+            "Terima Kasih Banyak";
 
-    //         $sendMessage = json_encode($message, 1);
+        return app(WahaClient::class)->send($nomor, $text);
+    }
 
-    //         curl_setopt_array($curl, [
-//             CURLOPT_URL => $urlEasyWa,
-//             CURLOPT_RETURNTRANSFER => true,
-//             CURLOPT_ENCODING => '',
-//             CURLOPT_MAXREDIRS => 10,
-//             CURLOPT_TIMEOUT => 0,
-//             CURLOPT_FOLLOWLOCATION => true,
-//             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-//             CURLOPT_CUSTOMREQUEST => 'POST',
-//             CURLOPT_POSTFIELDS => $sendMessage,
-//             CURLOPT_HTTPHEADER => [
-//                 'Content-Type: application/json',
-//             ],
-//         ]);
-
-    //         $response = curl_exec($curl);
-//         curl_close($curl);
-
-    //         return redirect()->back()->with('success', 'Pesan WhatsApp berhasil dikirim!');
-//     }
 }

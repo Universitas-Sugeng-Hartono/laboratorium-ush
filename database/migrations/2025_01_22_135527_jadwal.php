@@ -17,7 +17,8 @@ class Jadwal extends Migration
             $table->id();
             $table->foreignid('matakuliah_id')->references('id')->on('matakuliah');
             $table->foreignid('program_id')->references('id')->on('program');
-            $table->date('jadwal')->nullable();
+            $table->dateTime('jadwal')->nullable();
+            $table->timestamp('wa_sent_at')->nullable();
             $table->timestamps();
         });
     }

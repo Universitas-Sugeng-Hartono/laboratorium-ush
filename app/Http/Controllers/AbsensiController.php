@@ -35,25 +35,27 @@ class AbsensiController extends Controller
     public function index(Request $request)
     {
         $labs = Laboratorium::all();
-        $query = $this->buildFilteredQuery($request);
-        $absen = $query->orderBy('tanggal', 'desc')->get();
+        $query = $this->buildFilteredQuery($request)->with('labId');
+        $perPage = in_array((int)$request->get('per_page'), [10, 25, 50, 100]) ? (int)$request->get('per_page') : 25;
+        $absen = $query->orderBy('tanggal', 'desc')->paginate($perPage)->appends($request->query());
 
         return view('absensi.index', compact('absen', 'labs'));
     }
 
     public function create()
     {
-        return view('absensi.create');
+        $labs = Laboratorium::all();
+        return view('absensi.create', compact('labs'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
+            'tamu' => 'required|string|max:255',
+            'tanggal' => 'required|date',
+            'jam' => 'required',
+            'lab_id' => 'required|exists:laboratorium,id',
             'ttd' => 'required',
-            'keperluan' => 'nullable|string',
-            'tanggal' => 'nullable|date',
-            'jam' => 'nullable',
-            'tamu' => 'nullable',
         ]);
 
         $ttdPath = null;
@@ -67,13 +69,22 @@ class AbsensiController extends Controller
         }
 
         Absensi::create([
+            'tamu' => $request->tamu,
+            'kategori_tamu' => $request->kategori_tamu ?? 'Umum / Tamu',
+            'identitas' => $request->identitas,
+            'instansi' => $request->instansi,
+            'hp' => $request->hp,
+            'jumlah_tamu' => $request->jumlah_tamu ?? 1,
+            'kategori_keperluan' => $request->kategori_keperluan ?? 'Umum',
             'keperluan' => $request->keperluan,
             'tanggal' => $request->tanggal,
             'jam' => $request->jam,
-            'tamu' => $request->tamu,
+            'jamselesai' => $request->jamselesai,
+            'lab_id' => $request->lab_id,
             'ttd' => $ttdPath,
         ]);
-        return redirect()->route('absensi.index')->with('success', 'Jurnal berhasil dibuat!');
+
+        return redirect()->route('absensi.index')->with('success', 'Data kunjungan tamu berhasil dicatat!');
     }
 
     public function exportPdf(Request $request)
@@ -85,6 +96,12 @@ class AbsensiController extends Controller
         $pdf = PDF::loadView('absensi.export-pdf', compact('absensi', 'laboratorium'));
 
         return $pdf->download('tamu.pdf');
+    }
+
+    public function show($id)
+    {
+        $absen = Absensi::with('labId')->findOrFail($id);
+        return view('absensi.show', compact('absen'));
     }
 
     public function edit($id)
@@ -115,14 +132,22 @@ class AbsensiController extends Controller
         }
 
         $absen->update([
+            'tamu' => $request->tamu,
+            'kategori_tamu' => $request->kategori_tamu ?? $absen->kategori_tamu,
+            'identitas' => $request->identitas ?? $absen->identitas,
+            'instansi' => $request->instansi ?? $absen->instansi,
+            'hp' => $request->hp ?? $absen->hp,
+            'jumlah_tamu' => $request->jumlah_tamu ?? $absen->jumlah_tamu,
+            'kategori_keperluan' => $request->kategori_keperluan ?? $absen->kategori_keperluan,
             'keperluan' => $request->keperluan,
             'tanggal' => $request->tanggal,
             'jam' => $request->jam,
-            'tamu' => $request->tamu,
+            'jamselesai' => $request->jamselesai ?? $absen->jamselesai,
+            'lab_id' => $request->lab_id ?? $absen->lab_id,
             'ttd' => $ttdPath,
         ]);
 
-        return redirect()->route('absensi.index')->with('success', 'Absensi updated successfully!');
+        return redirect()->route('absensi.index')->with('success', 'Data kunjungan tamu berhasil diperbarui!');
     }
 
     public function destroy($id)

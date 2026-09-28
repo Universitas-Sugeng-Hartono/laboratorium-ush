@@ -34,8 +34,15 @@
 </head>
 
 <body>
-    <img src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/signatures/logo.png'))) }}"
-        width="100%">
+    @php
+        $logoPath = storage_path('app/public/signatures/logo.png');
+        if (!file_exists($logoPath)) {
+            $logoPath = public_path('img/itsk.png');
+        }
+    @endphp
+    @if(file_exists($logoPath))
+        <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" width="100%">
+    @endif
     <center>
         <h2>Laporan Pemakaian / Peminjaman Peralatan
             {{ $laboratorium->laboratorium ?? 'Semua Laboratorium' }}
@@ -49,7 +56,7 @@
                 <th>Laboratorium</th>
                 <th>Program Studi</th>
                 <th>Tanggal Pemakaian</th>
-                <th>Tanggal Pemakaian</th>
+                <th>Tanggal Pengembalian</th>
                 <th>Keperluan</th>
                 <th>Tanda Tangan</th>
             </tr>
@@ -65,7 +72,7 @@
                 <td>{{ $pemakaian->tgl_pengembalian }}</td>
                 <td>{{ $pemakaian->keperluan }}</td>
                 <td>
-                    @if($pemakaian->ttd)
+                    @if($pemakaian->ttd && file_exists(storage_path('app/public/'.$pemakaian->ttd)))
                     <img src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/'.$pemakaian->ttd))) }}"
                         width="50">
                     @else

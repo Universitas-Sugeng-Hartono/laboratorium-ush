@@ -12,9 +12,17 @@
     </style>
 </head>
 <body>
-    <img src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/signatures/logo.png'))) }}" width="100%">
+    @php
+        $logoPath = storage_path('app/public/signatures/logo.png');
+        if (!file_exists($logoPath)) {
+            $logoPath = public_path('img/itsk.png');
+        }
+    @endphp
+    @if(file_exists($logoPath))
+        <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" width="100%">
+    @endif
     <center>
-        <h2>Laporan Jurnal Praktikum {{ $jurnals->first()->matkulId->matakuliah  }}</br>
+        <h2>Laporan Jurnal Praktikum {{ $jurnals->first()?->matkulId?->matakuliah ?? '' }}</br>
             @if ($laboratorium && $program)
                 {{ $laboratorium->laboratorium }} dan Program Studi S1 - {{ $program->program }}
             @elseif ($laboratorium)
@@ -41,25 +49,29 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($jurnals as $key => $jurnal)
+            @forelse ($jurnals as $key => $jurnal)
             <tr>
                 <td>{{ $key + 1 }}</td>
-                <td>{{ $jurnal->matkulId->dosen }}</td>
-                <td>{{ $jurnal->programId->program }}</td>
-                <td>{{ $jurnal->matkulId->matakuliah }}</td>
+                <td>{{ $jurnal->matkulId?->dosen ?? '-' }}</td>
+                <td>{{ $jurnal->programId?->program ?? '-' }}</td>
+                <td>{{ $jurnal->matkulId?->matakuliah ?? '-' }}</td>
                 <td>{{ $jurnal->materi }}</td>
                 <td>{{ $jurnal->tanggal }}</td>
                 <td>{{ $jurnal->jam_mulai }} - {{ $jurnal->jam_selesai }}</td>
                 <td>{{ $jurnal->jumlah }}</td>
                 <td>
-                    @if($jurnal->ttd)
+                    @if($jurnal->ttd && file_exists(storage_path('app/public/'.$jurnal->ttd)))
                         <img src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/'.$jurnal->ttd))) }}" width="50">
                     @else
                         <p class="text-muted">Belum ada tanda tangan</p>
                     @endif
                 </td>
             </tr>
-            @endforeach
+            @empty
+            <tr>
+                <td colspan="9" style="text-align: center; padding: 15px; color: #64748b;">Tidak ada data jurnal untuk periode / mata kuliah ini.</td>
+            </tr>
+            @endforelse
         </tbody>
     </table>
     <p>{{ $today }}</p>
@@ -68,8 +80,8 @@
         $pengampus = $jurnals->groupBy('matakuliah_id')->map(function($items) {
             $first = $items->first();
             return [
-                'dosen' => $first->matkulId->dosen ?? '-',
-                'ttd'   => $first->ttd ?? null
+                'dosen' => $first?->matkulId?->dosen ?? '-',
+                'ttd'   => $first?->ttd ?? null
             ];
         })->values();
     @endphp
@@ -79,7 +91,7 @@
             @foreach ($pengampus as $data)
                 <td style="width: 200px; text-align: left; vertical-align: top; border: none; padding-right: 40px;">
                     <strong>Dosen Pengampu:</strong><br><br>
-                    @if($data['ttd'])
+                    @if($data['ttd'] && file_exists(storage_path('app/public/' . $data['ttd'])))
                         <img src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $data['ttd']))) }}" width="125"><br>
                     @else
                         <div style="width: 125px; height: 50px; border: 1px dashed #ccc;"></div><br>

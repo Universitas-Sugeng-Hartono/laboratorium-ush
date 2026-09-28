@@ -26,6 +26,6 @@ Route::get('/matkul-by-program/{program_id}', function ($program_id) {
     $matkuls = \App\Models\Matkul::where('program_id', $program_id)
         ->where('ta_id', $taAktif->id)
         ->orderBy('matakuliah', 'asc')
-        ->get(['id', 'matakuliah']);
+        ->get(['id', 'matakuliah', 'dosen']);
     return response()->json($matkuls);
 });

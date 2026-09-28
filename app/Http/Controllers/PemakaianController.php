@@ -9,6 +9,9 @@ use App\Models\Matkul;
 use App\Models\Laboratorium;
 use App\Models\User;
 use App\Models\Alat;
+use App\Models\Bahan;
+use App\Services\WahaClient;
+use App\Http\Controllers\HalamanController;
 use Illuminate\Http\Request;
 use PDF;
 use DB;
@@ -39,34 +42,62 @@ class PemakaianController extends Controller
             $query->where('tgl_peminjaman', '<=', $request->tanggal_akhir);
         }
 
-        $pemakaian = $query->get();
+        $perPage = in_array((int)$request->get('per_page'), [10, 25, 50, 100]) ? (int)$request->get('per_page') : 25;
+        $pemakaian = $query->paginate($perPage)->appends($request->query());
         $laboratories = Laboratorium::all();
 
         return view('pemakaian.index', compact('pemakaian', 'laboratories'));
     }
 
+    public function create()
+    {
+        $programs = Program::select('id', 'program')->orderBy('program', 'asc')->get();
+        $matkul = Matkul::select('id', 'matakuliah', 'program_id')->orderBy('matakuliah', 'asc')->get();
+        $laboratorium = Laboratorium::orderBy('laboratorium', 'asc')->get();
+        $bahans = Bahan::select('id', 'lab_id', 'bahan', 'jumlah', 'satuan')->orderBy('bahan', 'asc')->get();
+        $alats = Alat::select('id', 'lab_id', 'alat', 'jumlah', 'kondisi', 'status')->orderBy('alat', 'asc')->get();
+
+        return view('peminjaman', compact('laboratorium', 'programs', 'matkul', 'bahans', 'alats'));
+    }
+
+    public function store(Request $request)
+    {
+        return app(HalamanController::class)->storePeminjaman($request);
+    }
+
     public function storePemakaian($id)
     {
-        $pemakaian = Pemakaian::findOrFail($id);
-    
-        foreach ($pemakaian->alatData ?? [] as $alat) {
-            DB::table('alat')->where('id', $alat->alat_id)->increment('jumlah', (int) $alat->jumlah_pinjam);
-        }
-        
-        foreach ($pemakaian->bahanData ?? [] as $bahan) {
-            DB::table('bahan')->where('id', $bahan->bahan_id)->increment('jumlah', (int) $bahan->jumlah_pakai);
+        try {
+            DB::transaction(function () use ($id) {
+                $pemakaian = Pemakaian::where('id', $id)->lockForUpdate()->firstOrFail();
+
+                if ($pemakaian->keterangan !== 'setuju') {
+                    throw new \RuntimeException('Pengembalian hanya bisa dilakukan setelah peminjaman disetujui.');
+                }
+
+                if ($pemakaian->status_pengembalian === 'sudah') {
+                    throw new \RuntimeException('Barang pada peminjaman ini sudah dikembalikan.');
+                }
+
+                $pemakaian->restoreAlatStock();
+                $pemakaian->status_pengembalian = 'sudah';
+                $pemakaian->save();
+            });
+        } catch (\RuntimeException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
         }
 
-        $pemakaian->status_pengembalian = 'sudah';
-        $pemakaian->save();
-    
-        return redirect()->back()->with('success', 'Barang berhasil dikembalikan.');
+        return redirect()->back()->with('success', 'Alat berhasil dikembalikan. Stok bahan habis pakai tidak dikembalikan.');
     }
 
     public function edit($id)
     {
         $pemakaian = Pemakaian::findOrFail($id);
-        return view('pemakaian.edit', compact('pemakaian'));
+        $laboratorium = Laboratorium::orderBy('laboratorium')->get();
+        $programs = Program::orderBy('program')->get();
+        $matkuls = Matkul::orderBy('matakuliah')->get();
+
+        return view('pemakaian.edit', compact('pemakaian', 'laboratorium', 'programs', 'matkuls'));
     }
 
     public function show($id)
@@ -99,8 +130,38 @@ class PemakaianController extends Controller
             'keperluan' => 'required|string',
         ]);
 
-        $pemakaian = Pemakaian::findOrFail($id);
-        $pemakaian->update($request->all());
+        $data = $request->only([
+            'admin_id', 'keterangan', 'matakuliah_id', 'jadwal_id', 'program_id',
+            'keperluan', 'tgl_peminjaman', 'tgl_pengembalian', 'alat_id', 'bahan_id',
+            'ttd', 'nama', 'lab_id', 'nomor', 'status_pengembalian',
+        ]);
+        if (isset($data['alat_id']) && is_string($data['alat_id'])) {
+            $data['alat_id'] = json_decode($data['alat_id'], true) ?? [];
+        }
+        if (isset($data['bahan_id']) && is_string($data['bahan_id'])) {
+            $data['bahan_id'] = json_decode($data['bahan_id'], true) ?? [];
+        }
+
+        unset($data['status_pengembalian']);
+
+        try {
+            DB::transaction(function () use ($id, $data) {
+                $pemakaian = Pemakaian::where('id', $id)->lockForUpdate()->firstOrFail();
+                $newStatus = array_key_exists('keterangan', $data) ? $data['keterangan'] : $pemakaian->keterangan;
+                $wasHeld = $pemakaian->stockIsHeld();
+                $willHold = $newStatus === 'setuju' && $pemakaian->status_pengembalian !== 'sudah';
+
+                if (!$wasHeld && $willHold) {
+                    $pemakaian->deductStock();
+                } elseif ($wasHeld && !$willHold) {
+                    $pemakaian->restoreHeldStock();
+                }
+
+                $pemakaian->update($data);
+            });
+        } catch (\RuntimeException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('pemakaian.index')->with('success', 'Data pemakaian berhasil diperbarui');
     }
@@ -110,8 +171,19 @@ class PemakaianController extends Controller
      */
     public function destroy($id)
     {
-        $pemakaian = Pemakaian::findOrFail($id);
-        $pemakaian->delete();
+        try {
+            DB::transaction(function () use ($id) {
+                $pemakaian = Pemakaian::where('id', $id)->lockForUpdate()->firstOrFail();
+
+                if ($pemakaian->stockIsHeld()) {
+                    $pemakaian->restoreHeldStock();
+                }
+
+                $pemakaian->delete();
+            });
+        } catch (\RuntimeException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('pemakaian.index')->with('success', 'Data pemakaian berhasil dihapus');
     }
@@ -144,42 +216,19 @@ class PemakaianController extends Controller
     public function KirimWA(Request $request, $id)
     {
         $pemakaian = Pemakaian::findOrFail($id);
-        $curl = curl_init();
-        $ownNumber = '6281575946172';
-        $urlEasyWa = 'https://wa.sugenghartono.ac.id/sendmessage?number=' . $ownNumber;
-        $destination = $pemakaian->nomor . '@s.whatsapp.net';
-        $stringPesanan = <<<STR
+        $text = <<<STR
 Peminjaman atas nama {$pemakaian->nama}
 Dengan keperluan peminjaman digunakan untuk {$pemakaian->keperluan}
-Sudah melewati batas pengembalian pada tanggal {$pemakaian->tanggal_pengembalian}
+Sudah melewati batas pengembalian pada tanggal {$pemakaian->tgl_pengembalian}
 Harap segera mengembalikan peminjaman alat atau bahan digunakan.
 Terima kasih banyak
 STR;
-        $message = [
-            'to' => $destination,
-            'message' => [
-                'text' => $stringPesanan
-            ],
-        ];
-        $sendMessage = json_encode($message, 1);
 
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $urlEasyWa,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => $sendMessage,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-            ],
-        ]);
+        $result = app(WahaClient::class)->send((string) $pemakaian->nomor, $text);
+        if (!$result['ok']) {
+            return redirect()->back()->with('error', 'Gagal mengirim WhatsApp: ' . $result['error']);
+        }
 
-        $response = curl_exec($curl);
-        curl_close($curl);
         return redirect()->back()->with('success', 'Pesan WhatsApp berhasil dikirim!');
     }
 }

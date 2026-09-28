@@ -29,6 +29,6 @@ class Bahan extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('baha');
+        Schema::dropIfExists('bahan');
     }
 }

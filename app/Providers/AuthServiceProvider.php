@@ -46,7 +46,13 @@ class AuthServiceProvider extends ServiceProvider
             return $user->role == 'dosen';
         });
         Gate::define('isLab', function ($user) {
-            return $user->role == 'laboran';
+            return $user->isLaboran();
+        });
+        Gate::define('operateLab', function ($user) {
+            return $user->canOperateLab();
+        });
+        Gate::define('manageMaster', function ($user) {
+            return $user->canManageMaster();
         });
     }
 }

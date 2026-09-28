@@ -4,16 +4,24 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ta;
+use App\Models\Matkul;
+use App\Traits\RejectsDeleteWhenUsed;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
 class TaController extends Controller
 {
+    use RejectsDeleteWhenUsed;
     public function index()
     {
-        $ta = Ta::all();
+        $ta = Ta::orderBy('id', 'desc')->get();
+        $taAktif = Ta::where('status', 'aktif')->first();
+        $totalTa = $ta->count();
+        $totalGanjil = Ta::where('ta', 'LIKE', '%Ganjil%')->count();
+        $totalGenap = Ta::where('ta', 'LIKE', '%Genap%')->count();
         $dates = Carbon::now();
-        return view('ta.index', compact('ta', 'dates'));
+
+        return view('ta.index', compact('ta', 'taAktif', 'totalTa', 'totalGanjil', 'totalGenap', 'dates'));
     }
     
     public function generateTA()
@@ -25,16 +33,20 @@ class TaController extends Controller
             $startYear = now()->year;
             $nextSemester = 'Ganjil';
         } else {
-            preg_match('/(\d{4})\/(\d{4}) (Ganjil|Genap)/', $lastTA->ta, $matches);
-            $tahun1 = (int)$matches[1];
-            $tahun2 = (int)$matches[2];
-            $semester = $matches[3];
-    
-            if ($semester === 'Ganjil') {
-                $startYear = $tahun1;
-                $nextSemester = 'Genap';
+            if (preg_match('/(\d{4})\/(\d{4}) (Ganjil|Genap)/i', $lastTA->ta, $matches)) {
+                $tahun1 = (int)$matches[1];
+                $tahun2 = (int)$matches[2];
+                $semester = ucfirst(strtolower($matches[3]));
+        
+                if ($semester === 'Ganjil') {
+                    $startYear = $tahun1;
+                    $nextSemester = 'Genap';
+                } else {
+                    $startYear = $tahun2;
+                    $nextSemester = 'Ganjil';
+                }
             } else {
-                $startYear = $tahun2;
+                $startYear = now()->year;
                 $nextSemester = 'Ganjil';
             }
         }
@@ -46,7 +58,7 @@ class TaController extends Controller
             'status' => 'aktif',
         ]);
     
-        return redirect()->route('ta.index')->with('success', "TA $newTA berhasil dibuat dan diaktifkan!");
+        return redirect()->route('ta.index')->with('success', "Tahun Akademik $newTA berhasil digenerate dan diaktifkan!");
     }
 
     public function create()
@@ -56,16 +68,29 @@ class TaController extends Controller
 
     public function store(Request $request)
     {
+        $request->validate([
+            'ta' => 'required|string|max:100',
+            'status' => 'required|in:aktif,non-aktif',
+        ], [
+            'ta.required' => 'Format Tahun Akademik wajib diisi (contoh: 2024/2025 Ganjil).',
+            'status.required' => 'Status aktif/non-aktif wajib dipilih.',
+        ]);
+
         if ($request->status == 'aktif') {
             Ta::where('status', 'aktif')->update(['status' => 'non-aktif']);
         }
     
-        Ta::create($request->all());
-        return redirect()->route('ta.index')->with('success', 'TA created successfully!');
+        Ta::create([
+            'ta' => $request->ta,
+            'status' => $request->status,
+        ]);
+
+        return redirect()->route('ta.index')->with('success', 'Tahun Akademik berhasil ditambahkan!');
     }
     
     public function show($id)
     {
+        return redirect()->route('ta.index');
     }
 
     public function edit($id)
@@ -76,21 +101,37 @@ class TaController extends Controller
 
     public function update(Request $request, $id)
     {
+        $request->validate([
+            'ta' => 'required|string|max:100',
+            'status' => 'required|in:aktif,non-aktif',
+        ], [
+            'ta.required' => 'Format Tahun Akademik wajib diisi.',
+            'status.required' => 'Status wajib dipilih.',
+        ]);
+
         if ($request->status == 'aktif') {
-            Ta::where('status', 'aktif')->update(['status' => 'non-aktif']);
+            Ta::where('id', '!=', $id)->where('status', 'aktif')->update(['status' => 'non-aktif']);
         }
     
         $ta = Ta::findOrFail($id);
-        $ta->update($request->all());
+        $ta->update([
+            'ta' => $request->ta,
+            'status' => $request->status,
+        ]);
     
-        return redirect()->route('ta.index')->with('success', 'TA updated successfully!');
+        return redirect()->route('ta.index')->with('success', 'Tahun Akademik berhasil diperbarui!');
     }
 
     public function destroy($id)
     {
         $ta = Ta::findOrFail($id);
-        $ta->delete();
 
-        return redirect()->route('ta.index')->with('success', 'TA deleted successfully!');
+        if ($response = $this->rejectDeleteIfUsed('ta.index', [
+            'mata kuliah' => Matkul::where('ta_id', $ta->id)->count(),
+        ])) {
+            return $response;
+        }
+
+        return $this->deleteOrReject($ta, 'ta.index', 'Tahun Akademik berhasil dihapus!');
     }
 }

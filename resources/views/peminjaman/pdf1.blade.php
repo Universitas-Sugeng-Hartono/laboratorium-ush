@@ -102,7 +102,7 @@
     <div class="container">
         <!-- Kop Surat (Logo) -->
         <div class="header-logo">
-            <img src="{{ asset('storage/app/public/signatures/logo.png') }}" width="100%" alt="Kop Surat">
+            <img src="{{ file_exists(public_path('storage/signatures/logo.png')) ? asset('storage/signatures/logo.png') : asset('img/itsk.png') }}" width="100%" alt="Kop Surat">
         </div>
 
         <div class="header">Detail Peminjaman Laboratorium</div>

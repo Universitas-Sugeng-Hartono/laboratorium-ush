@@ -34,8 +34,15 @@
 </head>
 
 <body>
-    <img src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/signatures/logo.png'))) }}"
-        width="100%">
+    @php
+        $logoPath = storage_path('app/public/signatures/logo.png');
+        if (!file_exists($logoPath)) {
+            $logoPath = public_path('img/itsk.png');
+        }
+    @endphp
+    @if(file_exists($logoPath))
+        <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" width="100%">
+    @endif
     <center>
         <h2>Laporan Jurnal
             @if ($laboratorium && $program)
@@ -75,7 +82,7 @@
                 <td>{{ $jurnal->jam_mulai }} - {{ $jurnal->jam_selesai }}</td>
                 <td>{{ $jurnal->jumlah }}</td>
                 <td>
-                    @if($jurnal->ttd)
+                    @if($jurnal->ttd && file_exists(storage_path('app/public/'.$jurnal->ttd)))
                     <img src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/'.$jurnal->ttd))) }}"
                         width="50">
                     @else

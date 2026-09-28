@@ -6,10 +6,11 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Traits\LogsActivity;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, LogsActivity;
 
     /**
      * The attributes that are mass assignable.
@@ -42,4 +43,29 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    /**
+     * Label representation for audit logs
+     */
+    public function getAuditRecordLabel(): string
+    {
+        return "{$this->name} (" . ($this->email ?? $this->id) . ")";
+    }
+
+    public function isLaboran(): bool
+    {
+        $role = (string) $this->role;
+
+        return $role === 'laboran' || str_starts_with($role, 'lab');
+    }
+
+    public function canOperateLab(): bool
+    {
+        return $this->role === 'super' || $this->role === 'dosen' || $this->isLaboran();
+    }
+
+    public function canManageMaster(): bool
+    {
+        return $this->role === 'super' || $this->isLaboran();
+    }
 }

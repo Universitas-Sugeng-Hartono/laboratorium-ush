@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Jadwal;
+use App\Services\WahaClient;
 use Carbon\Carbon;
 
 class AutoKirimWA extends Command
@@ -14,13 +15,11 @@ class AutoKirimWA extends Command
     public function handle()
     {
         $now = Carbon::now('Asia/Jakarta');
-        $nowDate = $now->format('Y-m-d');
-        $nowTime = $now->format('H:i');
 
         $this->info("[{$now}] Memulai auto kirim WA...");
 
-        // Ambil jadwal hari ini yang belum dikirim WA dan sudah waktunya (atau sudah lewat max 5 menit)
-        $jadwals = Jadwal::whereDate('jadwal', $nowDate)
+        $jadwals = Jadwal::with(['matkulId', 'labId'])
+            ->whereDate('jadwal', $now->toDateString())
             ->whereNull('wa_sent_at')
             ->get();
 
@@ -30,65 +29,46 @@ class AutoKirimWA extends Command
         }
 
         $sent = 0;
+        $waha = app(WahaClient::class);
 
         foreach ($jadwals as $jadwal) {
             $jadwalTime = Carbon::parse($jadwal->jadwal, 'Asia/Jakarta');
-            $diffMinutes = $now->diffInMinutes($jadwalTime, false); // negative = sudah lewat
+            $diffMinutes = $now->diffInMinutes($jadwalTime, false);
 
-            // Kirim jika waktunya sudah tiba (0 sampai 5 menit yang lalu)
-            if ($diffMinutes <= 0 && $diffMinutes >= -5) {
-                $this->kirimPesan($jadwal);
-                $jadwal->update(['wa_sent_at' => now()]);
-                $sent++;
-                $this->info("✓ Terkirim: {$jadwal->matkulId->matakuliah} - {$jadwal->matkulId->dosen}");
+            if ($diffMinutes > 0 || $diffMinutes < -5) {
+                continue;
             }
+
+            $nomor = optional($jadwal->matkulId)->nomor;
+            $dosen = optional($jadwal->matkulId)->dosen ?? 'Bapak/Ibu';
+            $matkul = optional($jadwal->matkulId)->matakuliah ?? '-';
+            $lab = optional($jadwal->labId)->laboratorium ?? '-';
+
+            if (!$nomor) {
+                $this->error("Nomor dosen kosong: {$matkul}");
+                continue;
+            }
+
+            $text =
+                "Yth. Bapak/Ibu {$dosen}.\n" .
+                "Jadwal {$lab} - {$jadwal->jadwal}.\n" .
+                "Mata Kuliah {$matkul}\n" .
+                "Dimohon untuk mengisi E-Journal Laboratorium sebelum meninggalkan ruangan {$lab}\n" .
+                "https://laboratorium.sugenghartono.ac.id/jadwallab\n" .
+                "Terima Kasih Banyak";
+
+            $result = $waha->send($nomor, $text);
+            if (!$result['ok']) {
+                $this->error("Gagal kirim {$matkul}: {$result['error']}");
+                continue;
+            }
+
+            $jadwal->update(['wa_sent_at' => now()]);
+            $sent++;
+            $this->info("Terkirim: {$matkul} - {$dosen}");
         }
 
         $this->info("Selesai. {$sent} pesan terkirim.");
         return 0;
-    }
-
-    private function kirimPesan(Jadwal $jadwal)
-    {
-        $destination = $jadwal->matkulId->nomor;
-
-        $stringPesanan =
-            "Yth. Bapak/Ibu {$jadwal->matkulId->dosen}.\n" .
-            "Jadwal {$jadwal->labId->laboratorium} - {$jadwal->jadwal}.\n" .
-            "Mata Kuliah {$jadwal->matkulId->matakuliah}\n" .
-            "Dimohon untuk mengisi E-Journal Laboratorium sebelum meninggalkan ruangan {$jadwal->labId->laboratorium}\n" .
-            "https://laboratorium.sugenghartono.ac.id/jadwallab\n" .
-            "Terima Kasih Banyak";
-
-        $curl = curl_init();
-
-        curl_setopt_array($curl, [
-            CURLOPT_URL => 'https://api.fonnte.com/send',
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => [
-                'target'      => $destination,
-                'message'     => $stringPesanan,
-                'delay'       => 2,
-                'typing'      => false,
-                'countryCode' => '62',
-            ],
-            CURLOPT_HTTPHEADER => [
-                'Authorization: cb4br9SeSXNT4V6Xi7LP'
-            ],
-        ]);
-
-        $response = curl_exec($curl);
-
-        if (curl_errno($curl)) {
-            $this->error("Gagal kirim ke {$destination}: " . curl_error($curl));
-        }
-
-        curl_close($curl);
     }
 }

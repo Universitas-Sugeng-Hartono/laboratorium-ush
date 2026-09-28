@@ -18,6 +18,8 @@ class Mata extends Migration
             $table->string('matakuliah')->nullable();
             $table->string('dosen')->nullable();
             $table->foreignid('program_id')->references('id')->on('program');
+            $table->string('nomor')->nullable();
+            $table->foreignId('ta_id')->nullable()->constrained('ta')->onDelete('cascade');
             $table->timestamps();
         });
     }

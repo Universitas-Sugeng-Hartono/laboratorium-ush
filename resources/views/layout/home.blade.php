@@ -10,18 +10,294 @@
     <meta name="description" content="">
     <meta name="author" content="">
     <link rel="icon" type="image/png" sizes="16x16" href="{{asset('img/ushh.png') }}">
-    <title>SILABO Universitas Sugeng Hartono</title>
+    <title>SILABO - Universitas Sugeng Hartono</title>
     <link href="{{asset('dist/css/style.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <style>
+        /* Modern SweetAlert2 SILABO Theme */
+        .swal2-popup {
+            border-radius: 16px !important;
+            padding: 26px 22px !important;
+            font-family: inherit !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+        .swal2-icon {
+            border-width: 3px !important;
+            margin: 8px auto 16px auto !important;
+            transform: scale(0.9);
+        }
+        .swal2-title {
+            font-size: 18px !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
+            margin-bottom: 6px !important;
+        }
+        .swal2-html-container {
+            font-size: 13.5px !important;
+            color: #64748b !important;
+            line-height: 1.5 !important;
+            margin: 0 !important;
+        }
+        .swal2-actions {
+            margin-top: 22px !important;
+            gap: 10px !important;
+        }
+        .swal2-styled.swal2-confirm {
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            font-size: 13px !important;
+            padding: 9px 22px !important;
+            background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+            box-shadow: 0 2px 4px rgba(220, 38, 38, 0.25) !important;
+            transition: all 0.2s ease !important;
+        }
+        .swal2-styled.swal2-confirm:hover {
+            background: linear-gradient(135deg, #b91c1c, #991b1b) !important;
+            transform: translateY(-1px) !important;
+        }
+        .swal2-styled.swal2-cancel {
+            border-radius: 8px !important;
+            font-weight: 500 !important;
+            font-size: 13px !important;
+            padding: 9px 18px !important;
+            background: #f8fafc !important;
+            color: #475569 !important;
+            border: 1px solid #cbd5e1 !important;
+            transition: all 0.2s ease !important;
+        }
+        .swal2-styled.swal2-cancel:hover {
+            background: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+
+        /* SILABO Theme: Active Sidebar Item in Brand Primary Blue (#2563eb) */
+        .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link,
+        .sidebar-nav #sidebarnav .sidebar-item.active > .sidebar-link,
+        .sidebar-nav #sidebarnav .sidebar-item > .sidebar-link.active,
+        .sidebar-nav #sidebarnav .sidebar-link.active,
+        .sidebar-nav ul .sidebar-item.selected > .sidebar-link,
+        .sidebar-nav ul .sidebar-item.active > .sidebar-link,
+        .sidebar-nav ul .sidebar-item > .sidebar-link.active {
+            background: #2563eb !important;
+            background-color: #2563eb !important;
+            color: #ffffff !important;
+            box-shadow: 0px 6px 14px 0px rgba(37, 99, 235, 0.3) !important;
+            opacity: 1 !important;
+        }
+        .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link i,
+        .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link .feather-icon,
+        .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link span,
+        .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link .hide-menu,
+        .sidebar-nav #sidebarnav .sidebar-item.active > .sidebar-link i,
+        .sidebar-nav #sidebarnav .sidebar-item.active > .sidebar-link span,
+        .sidebar-nav ul .sidebar-item.selected > .sidebar-link i,
+        .sidebar-nav ul .sidebar-item.selected > .sidebar-link span {
+            color: #ffffff !important;
+        }
+        .sidebar-nav .nav-small-cap {
+            font-size: 10.5px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.6px !important;
+            text-transform: uppercase !important;
+            color: #94a3b8 !important;
+            padding: 14px 16px 4px 16px !important;
+        }
+        .sidebar-nav .list-divider {
+            margin: 6px 16px !important;
+            border-top: 1px solid #f1f5f9 !important;
+        }
+
+        /* Disable preloader to prevent white flash screen */
+        .preloader {
+            display: none !important;
+        }
+
+        .app-modal .modal-dialog { max-width: 520px; }
+        .app-modal .modal-dialog.modal-sm { max-width: 420px; }
+        .app-modal .modal-dialog.modal-lg { max-width: 760px; }
+        .app-modal .modal-content {
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
+            overflow: hidden;
+        }
+        .app-modal .modal-header {
+            align-items: flex-start;
+            border: 0;
+            padding: 22px 24px 0;
+            gap: 12px;
+        }
+        .app-modal .modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.3;
+        }
+        .app-modal .modal-kicker {
+            margin: 4px 0 0;
+            font-size: 13px;
+            line-height: 1.45;
+            color: #64748b;
+        }
+        .app-modal .btn-close { margin-top: 2px; }
+        .app-modal .modal-body { padding: 18px 24px 6px; }
+        .app-modal .field { margin-bottom: 14px; }
+        .app-modal .field > label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #334155;
+        }
+        .app-modal .req { color: #dc2626; }
+        .app-modal .hint {
+            display: block;
+            margin-top: 6px;
+            font-size: 12px;
+            line-height: 1.45;
+            color: #64748b;
+        }
+        .app-modal .field .form-control,
+        .app-modal .field .form-select {
+            min-height: 40px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 14px;
+            color: #0f172a;
+        }
+        .app-modal textarea.form-control { min-height: 80px; }
+        .app-modal .form-control:focus,
+        .app-modal .form-select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+        .app-modal .modal-footer {
+            border: 0;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 8px 24px 22px;
+        }
+        .app-modal .btn-modal-cancel,
+        .app-modal .btn-modal-save {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1;
+        }
+        .app-modal .btn-modal-cancel {
+            background: #fff;
+            border-color: #cbd5e1;
+            color: #334155;
+        }
+        .app-modal .btn-modal-cancel:hover { background: #f8fafc; color: #0f172a; }
+        .app-modal .btn-modal-save { background: #17365d; color: #fff; }
+        .app-modal .btn-modal-save:hover { background: #102744; color: #fff; }
+        .app-modal .btn-modal-save.is-success { background: #047857; }
+        .app-modal .btn-modal-save.is-success:hover { background: #065f46; }
+        .app-modal .meta-strip {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: #334155;
+        }
+        .app-modal .section-label {
+            margin-bottom: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+        .app-modal .return-table { font-size: 13px; }
+        .app-modal .return-table th {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #64748b;
+            border-bottom-color: #e2e8f0;
+        }
+        .app-modal .return-table .form-control,
+        .app-modal .return-table .form-select {
+            min-height: 34px;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+        .app-modal .template-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px;
+        }
+
+        .page-wrapper {
+            display: block !important;
+            transition: none !important;
+            background-color: #f8fafc;
+            min-height: calc(100vh - 64px);
+        }
+
+        .topbar .top-navbar,
+        .topbar .navbar-collapse {
+            flex-wrap: nowrap;
+        }
+        .topbar .navbar-collapse > .navbar-nav {
+            flex-wrap: nowrap;
+            align-items: center;
+        }
+        .topbar #current-time {
+            display: inline-block;
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.2;
+            color: #1e293b;
+        }
+        .topbar .user-name {
+            display: inline-block;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            vertical-align: middle;
+            line-height: 1.2;
+        }
+
+        .sidebar-nav #sidebarnav .sidebar-item:not(.selected):not(.active) .sidebar-link:hover {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+        .sidebar-nav .has-arrow::after {
+            transition: none !important;
+        }
+
+        #main-wrapper[data-layout=vertical][data-sidebar-position=fixed] .left-sidebar {
+            position: absolute;
+            height: auto;
+            overflow: visible;
+        }
+        .scroll-sidebar,
+        .scroll-sidebar.ps {
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+        }
+    </style>
     <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script> -->
 </head>
 
 <body>
-    <div class="preloader">
-        <div class="lds-ripple">
-            <div class="lds-pos"></div>
-            <div class="lds-pos"></div>
-        </div>
-    </div>
     <div id="main-wrapper" data-theme="light" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
         data-sidebar-position="fixed" data-header-position="fixed" data-boxed-layout="full">
         <header class="topbar" data-navbarbg="skin6">
@@ -31,8 +307,8 @@
                             class="ti-menu ti-close"></i></a>
                     <div class="navbar-brand">
                         <!-- Logo icon -->
-                        <a href="">
-                            <img src="{{asset('img/itsk.png') }}" alt="" class="img-fluid">
+                        <a href="/home">
+                            <img src="{{asset('img/itsk.png') }}" alt="Logo USH" class="img-fluid" style="max-height: 48px; object-fit: contain;">
                         </a>
                     </div>
                     <a class="topbartoggler d-block d-lg-none waves-effect waves-light" href="javascript:void(0)"
@@ -109,21 +385,25 @@
                                 aria-haspopup="true" aria-expanded="false">
                                 <img src="{{asset('assets/images/users/1.jpg') }}" alt="user" class="rounded-circle"
                                     width="40">
+                                @php $headerName = Auth::user()->name ?? session('siakad_user_name', 'Pengguna'); @endphp
                                 <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span
-                                        class="text-dark">{{ session('siakad_user_name', 'Pengguna') }}</span> <i data-feather="chevron-down"
+                                        class="text-dark user-name" title="{{ $headerName }}">{{ $headerName }}</span> <i data-feather="chevron-down"
                                         class="svg-icon"></i></span>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
-                                <a class="dropdown-item" href="/viewuser"><i data-feather="user"
+                                <a class="dropdown-item" href="{{ route('user.profile') }}"><i data-feather="user"
                                         class="svg-icon me-2 ms-1"></i>
                                     My Profile</a>
                                 <!--<a class="dropdown-item" href="javascript:void(0)"><i data-feather="settings"-->
                                 <!--        class="svg-icon me-2 ms-1"></i>-->
                                 <!--    Account Setting</a>-->
                                 <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="/logout"><i data-feather="power"
-                                        class="svg-icon me-2 ms-1"></i>
-                                    Logout</a>
+                                <form method="POST" action="/logout" id="logout-form" style="display:inline;">
+                                    @csrf
+                                    <a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i data-feather="power"
+                                            class="svg-icon me-2 ms-1"></i>
+                                        Logout</a>
+                                </form>
                             </div>
                         </li>
                     </ul>
@@ -188,6 +468,13 @@
     <script src="{{asset('assets/libs/jquery/dist/jquery.min.js') }}"></script>
     <script src="{{asset('assets/libs/popper.js/dist/umd/popper.min.js') }}"></script>
     <script src="{{asset('assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        document.querySelectorAll('.modal').forEach(function (modal) {
+            if (modal.parentElement !== document.body) {
+                document.body.appendChild(modal);
+            }
+        });
+    </script>
     <!-- apps -->
     <!-- apps -->
     <script src="{{asset('dist/js/app-style-switcher.js') }}"></script>
@@ -236,6 +523,323 @@
             const selectedLanguage = languageSelect.value;
             translatePage(selectedLanguage);
         });
+    });
+
+    function updatePerPage(val) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('per_page', val);
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+    }
+    </script>
+
+    <!-- SweetAlert2 Library & Global Professional Confirmation Handler -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Intercept forms that have onsubmit with confirm() or class .form-delete
+        document.querySelectorAll('form[onsubmit*="confirm"], form.form-delete').forEach(function(form) {
+            const onsubmitAttr = form.getAttribute('onsubmit') || '';
+            const dataTitle = form.getAttribute('data-title');
+            const dataText = form.getAttribute('data-text');
+
+            let message = 'Data yang dihapus tidak dapat dikembalikan.';
+            let title = 'Konfirmasi Hapus Data';
+
+            if (dataTitle) {
+                title = dataTitle;
+            }
+            if (dataText) {
+                message = dataText;
+            } else if (onsubmitAttr) {
+                const match = onsubmitAttr.match(/confirm\(['"](.*?)['"]\)/);
+                if (match && match[1]) {
+                    message = match[1];
+                }
+            }
+
+            // Remove native inline onsubmit so browser native popup never fires
+            form.removeAttribute('onsubmit');
+            form.onsubmit = null;
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: title,
+                    text: message,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: '<i class="fas fa-trash me-1"></i> Ya, Hapus',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true,
+                    focusCancel: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+
+        // 2. Intercept links that have onclick with confirm()
+        document.querySelectorAll('a[onclick*="confirm"]').forEach(function(link) {
+            const onclickAttr = link.getAttribute('onclick') || '';
+            const match = onclickAttr.match(/confirm\(['"](.*?)['"]\)/);
+            const message = match && match[1] ? match[1] : 'Apakah Anda yakin ingin melanjutkan tindakan ini?';
+
+            link.removeAttribute('onclick');
+            link.onclick = null;
+
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetUrl = link.getAttribute('href');
+                Swal.fire({
+                    title: 'Konfirmasi Tindakan',
+                    text: message,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#2563eb',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Ya, Lanjutkan',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true,
+                    focusCancel: true
+                }).then((result) => {
+                    if (result.isConfirmed && targetUrl && targetUrl !== '#') {
+                        window.location.href = targetUrl;
+                    }
+                });
+            });
+        });
+
+        // 3. Delegate handler for dynamically clicked delete buttons
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-trigger-delete, [data-confirm-delete]');
+            if (btn) {
+                e.preventDefault();
+                const form = btn.closest('form');
+                const title = btn.getAttribute('data-title') || form?.getAttribute('data-title') || 'Hapus Jadwal?';
+                const text = btn.getAttribute('data-text') || form?.getAttribute('data-text') || 'Data ini akan dihapus secara permanen.';
+
+                Swal.fire({
+                    title: title,
+                    text: text,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: '<i class="fas fa-trash me-1"></i> Ya, Hapus',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true,
+                    focusCancel: true
+                }).then((result) => {
+                    if (result.isConfirmed && form) {
+                        form.submit();
+                    }
+                });
+            }
+        });
+
+        const sidebarnav = document.querySelector('#sidebarnav');
+        if (sidebarnav) {
+            sidebarnav.addEventListener('click', function (event) {
+                const arrow = event.target.closest('a.has-arrow');
+                if (!arrow || !sidebarnav.contains(arrow)) {
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+
+                const submenu = arrow.nextElementSibling;
+                if (!submenu || !submenu.classList.contains('collapse')) {
+                    return;
+                }
+
+                const willOpen = !submenu.classList.contains('in');
+                submenu.classList.toggle('in', willOpen);
+                submenu.classList.toggle('show', willOpen);
+                submenu.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+                arrow.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+                arrow.classList.remove('active');
+                extendPageToSidebar();
+            }, true);
+        }
+
+        function extendPageToSidebar() {
+            const sidebar = document.querySelector('.left-sidebar');
+            const wrapper = document.querySelector('#main-wrapper');
+            if (!sidebar || !wrapper) {
+                return;
+            }
+            const needed = sidebar.offsetTop + sidebar.offsetHeight;
+            if (wrapper.offsetHeight < needed) {
+                wrapper.style.minHeight = needed + 'px';
+            }
+        }
+
+        if (window.jQuery && jQuery.fn.perfectScrollbar) {
+            try {
+                jQuery('.scroll-sidebar').perfectScrollbar('destroy');
+            } catch (error) {}
+        }
+        extendPageToSidebar();
+
+        const SCROLL_KEY = 'silabo-window-scroll';
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+
+        function currentScroll() {
+            return window.scrollY || document.documentElement.scrollTop || 0;
+        }
+
+        function saveScrollPosition() {
+            try {
+                const y = currentScroll();
+                if (y === 0) {
+                    const existing = parseInt(sessionStorage.getItem(SCROLL_KEY) || '0', 10);
+                    const active = document.querySelector('#sidebarnav a.sidebar-link.active');
+                    if (existing > 0 && active && active.getBoundingClientRect().top > window.innerHeight) {
+                        return;
+                    }
+                }
+                sessionStorage.setItem(SCROLL_KEY, String(y));
+            } catch (error) {}
+        }
+
+        function restoreScrollPosition() {
+            try {
+                const saved = sessionStorage.getItem(SCROLL_KEY);
+                if (saved === null) {
+                    return;
+                }
+                const y = parseInt(saved, 10);
+                if (!Number.isNaN(y) && y > 0) {
+                    window.scrollTo({ top: y, left: 0, behavior: 'auto' });
+                }
+            } catch (error) {}
+        }
+
+        function scrollActiveIntoView(link) {
+            if (!link || link.offsetHeight < 1) {
+                return;
+            }
+            const topLimit = 88;
+            const bottomLimit = window.innerHeight - 16;
+            const rect = link.getBoundingClientRect();
+            if (rect.top >= topLimit && rect.bottom <= bottomLimit) {
+                return;
+            }
+            const target = Math.max(0, currentScroll() + rect.top - topLimit);
+            const root = document.scrollingElement || document.documentElement;
+            root.scrollTop = target;
+            window.scrollTo({ top: target, left: 0, behavior: 'auto' });
+            if (Math.abs(currentScroll() - target) > 2) {
+                link.scrollIntoView({ block: 'start', inline: 'nearest' });
+                window.scrollBy(0, -topLimit);
+            }
+        }
+
+        let allowScrollSave = false;
+        let scrollSaveQueued = false;
+        window.addEventListener('scroll', function () {
+            if (!allowScrollSave || scrollSaveQueued) {
+                return;
+            }
+            scrollSaveQueued = true;
+            requestAnimationFrame(function () {
+                scrollSaveQueued = false;
+                saveScrollPosition();
+            });
+        }, { passive: true });
+        window.addEventListener('pagehide', function () {
+            allowScrollSave = true;
+            saveScrollPosition();
+        });
+        document.querySelectorAll('#sidebarnav a.sidebar-link').forEach(function (link) {
+            link.addEventListener('click', function () {
+                const href = link.getAttribute('href') || '';
+                if (!href || href === '#' || href.indexOf('javascript:') === 0) {
+                    return;
+                }
+                allowScrollSave = true;
+                saveScrollPosition();
+            });
+        });
+
+        (function keepSidebarOnCurrentMenu() {
+            const current = (location.pathname || '/').replace(/\/+$/, '') || '/';
+            const links = Array.from(document.querySelectorAll('#sidebarnav a.sidebar-link'));
+            let match = null;
+            let matchLength = -1;
+
+            links.forEach(function (link) {
+                const href = link.getAttribute('href') || '';
+                if (!href || href === '#' || href.indexOf('javascript:') === 0) {
+                    return;
+                }
+                let path;
+                try {
+                    path = new URL(href, location.origin).pathname.replace(/\/+$/, '') || '/';
+                } catch (error) {
+                    return;
+                }
+                if (path !== '/' && (path === current || current.indexOf(path + '/') === 0)) {
+                    if (path.length > matchLength) {
+                        match = link;
+                        matchLength = path.length;
+                    }
+                }
+            });
+
+            if (!match) {
+                restoreScrollPosition();
+                setTimeout(function () {
+                    allowScrollSave = true;
+                    saveScrollPosition();
+                }, 60);
+                return;
+            }
+
+            links.forEach(function (link) {
+                link.classList.remove('active');
+                const item = link.closest('.sidebar-item');
+                if (item) {
+                    item.classList.remove('active', 'selected');
+                }
+            });
+
+            match.classList.add('active');
+            const item = match.closest('.sidebar-item');
+            if (item) {
+                item.classList.add('selected');
+            }
+
+            const submenu = match.closest('ul.collapse');
+            if (submenu) {
+                submenu.classList.add('in', 'show');
+                const parentLink = submenu.parentElement ? submenu.parentElement.querySelector(':scope > a.has-arrow') : null;
+                if (parentLink) {
+                    parentLink.setAttribute('aria-expanded', 'true');
+                }
+            }
+
+            function placeSidebarScroll() {
+                extendPageToSidebar();
+                restoreScrollPosition();
+                scrollActiveIntoView(match);
+            }
+
+            placeSidebarScroll();
+            window.addEventListener('load', placeSidebarScroll);
+            setTimeout(function () {
+                placeSidebarScroll();
+                allowScrollSave = true;
+                saveScrollPosition();
+            }, 60);
+        })();
     });
     </script>
 

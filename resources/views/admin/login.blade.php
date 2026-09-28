@@ -9,7 +9,7 @@
     <meta name="description" content="">
     <meta name="author" content="">
     <link rel="icon" type="image/png" sizes="16x16" href="{{asset('dist/img/ushh.png') }}">
-    <title>SILABO Universitas Sugeng Hartono</title>
+    <title>SILABO - Universitas Sugeng Hartono</title>
     <link href="{{asset('dist/css/style.min.css') }}" rel="stylesheet">
     <style>
     .auth-box {
@@ -75,27 +75,35 @@
                         <img src="{{asset('img/itsk.png') }}" alt="wrapkit" style="width: 80%; margin-bottom: 20px;">
                         <h2 class="mt-3 text-center" style="font-weight: 700; color: #17365D;">SILABO USH</h2>
                         <p style="font-size: 1rem; color: #555;">SSO Account (SIAKAD)</p>
+                        @if (session('error'))
+                        <div class="alert alert-danger py-2 small mb-3 text-start" style="border-radius: 10px;">
+                            <i class="fa fa-circle-exclamation me-1"></i> {{ session('error') }}
+                        </div>
+                        @endif
                         <form action="/login" method="POST" class="mt-4">
                             @csrf
                             <div class="form-group mb-3">
-                                <input type="text" name="email" class="form-control" placeholder="Email/NIM" required
-                                    style="border-radius: 30px; height: 45px; font-size: 14px;">
+                                <input type="text" name="email" class="form-control" placeholder="Email / NIM / NIDN" required
+                                    style="border-radius: 30px; height: 45px; font-size: 14px;" value="{{ old('email') }}">
                             </div>
                             <div class="form-group mb-3">
                                 <input type="password" name="password" class="form-control" placeholder="Password"
                                     required style="border-radius: 30px; height: 45px; font-size: 14px;">
                             </div>
-                            @if ($errors->has('email'))
-                            <div class="text-danger text-left" style="font-size: 14px;">{{ $errors->first('email') }}
+                            @if (isset($errors) && $errors->has('email'))
+                            <div class="text-danger text-left small mb-2">
+                                {{ $errors->first('email') }}
                             </div>
                             @endif
-                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                <a href="#" class="text-primary" style="font-size: 14px;">Forgot password?</a>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-block mt-3"
-                                style="border-radius: 30px; height: 45px; background-color: #17365D; font-size: 16px;">
-                                Login
+                            <button type="submit" class="btn btn-primary btn-block mt-3 w-100"
+                                style="border-radius: 30px; height: 45px; background-color: #17365D; font-size: 15px; font-weight: 600;">
+                                Masuk ke Sistem
                             </button>
+                            <div class="mt-3 text-center">
+                                <a href="/" class="text-muted small" style="text-decoration: none;">
+                                    &larr; Kembali ke Portal Utama
+                                </a>
+                            </div>
                         </form>
                     </div>
                 </div>
