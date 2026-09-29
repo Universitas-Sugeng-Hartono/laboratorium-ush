@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\{Absensi, Laboratorium};
+use App\Rules\NomorWhatsappRule;
+use App\Support\NomorWhatsapp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use PDF;
@@ -56,6 +58,7 @@ class AbsensiController extends Controller
             'jam' => 'required',
             'lab_id' => 'required|exists:laboratorium,id',
             'ttd' => 'required',
+            'hp' => ['nullable', 'string', 'max:20', new NomorWhatsappRule],
         ]);
 
         $ttdPath = null;
@@ -73,7 +76,7 @@ class AbsensiController extends Controller
             'kategori_tamu' => $request->kategori_tamu ?? 'Umum / Tamu',
             'identitas' => $request->identitas,
             'instansi' => $request->instansi,
-            'hp' => $request->hp,
+            'hp' => NomorWhatsapp::normalize($request->hp),
             'jumlah_tamu' => $request->jumlah_tamu ?? 1,
             'kategori_keperluan' => $request->kategori_keperluan ?? 'Umum',
             'keperluan' => $request->keperluan,
@@ -118,6 +121,7 @@ class AbsensiController extends Controller
             'tanggal' => 'nullable|date',
             'jam' => 'nullable',
             'tamu' => 'nullable',
+            'hp' => ['nullable', 'string', 'max:20', new NomorWhatsappRule],
         ]);
 
         $absen = Absensi::findOrFail($id);
@@ -136,7 +140,7 @@ class AbsensiController extends Controller
             'kategori_tamu' => $request->kategori_tamu ?? $absen->kategori_tamu,
             'identitas' => $request->identitas ?? $absen->identitas,
             'instansi' => $request->instansi ?? $absen->instansi,
-            'hp' => $request->hp ?? $absen->hp,
+            'hp' => $request->exists('hp') ? NomorWhatsapp::normalize($request->hp) : $absen->hp,
             'jumlah_tamu' => $request->jumlah_tamu ?? $absen->jumlah_tamu,
             'kategori_keperluan' => $request->kategori_keperluan ?? $absen->kategori_keperluan,
             'keperluan' => $request->keperluan,

@@ -13,7 +13,9 @@ use App\Models\Program;
 use App\Models\Laboratorium;
 use App\Models\Pemakaian;
 use App\Models\Ta;
-use App\Services\WahaClient;
+use App\Rules\NomorWhatsappRule;
+use App\Services\FonnteClient;
+use App\Support\NomorWhatsapp;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -167,7 +169,7 @@ class HalamanController extends Controller
             'kategori_tamu' => 'required|string|max:60',
             'identitas' => 'nullable|string|max:50',
             'instansi' => 'nullable|string|max:150',
-            'hp' => 'required|string|max:20',
+            'hp' => ['required', 'string', 'max:20', new NomorWhatsappRule],
             'jumlah_tamu' => 'required|integer|min:1',
             'lab_id' => 'required|exists:laboratorium,id',
             'tanggal' => 'required|date',
@@ -181,6 +183,7 @@ class HalamanController extends Controller
             'tamu.required' => 'Nama lengkap tamu wajib diisi.',
             'kategori_tamu.required' => 'Kategori pengunjung wajib dipilih.',
             'hp.required' => 'Nomor WhatsApp / Handphone wajib diisi.',
+            'hp.' . NomorWhatsappRule::class => NomorWhatsapp::PESAN,
             'jumlah_tamu.required' => 'Jumlah tamu wajib diisi.',
             'jumlah_tamu.integer' => 'Jumlah tamu harus berupa angka.',
             'jumlah_tamu.min' => 'Jumlah tamu minimal 1 orang.',
@@ -206,7 +209,7 @@ class HalamanController extends Controller
             'kategori_tamu' => $request->kategori_tamu,
             'identitas' => $request->identitas ? trim($request->identitas) : null,
             'instansi' => $request->instansi ? trim($request->instansi) : null,
-            'hp' => trim($request->hp),
+            'hp' => NomorWhatsapp::normalize($request->hp),
             'jumlah_tamu' => (int) $request->jumlah_tamu,
             'kategori_keperluan' => $request->kategori_keperluan,
             'keperluan' => trim($request->keperluan),
@@ -286,7 +289,7 @@ class HalamanController extends Controller
     {
         $request->validate([
             'nama' => 'required|string|max:255',
-            'nomor' => 'required|string|max:30',
+            'nomor' => ['required', 'string', 'max:20', new NomorWhatsappRule],
             'lab_id' => 'required|integer|exists:laboratorium,id',
             'matakuliah_id' => 'nullable|integer',
             'program_id' => 'nullable|integer',
@@ -320,7 +323,7 @@ class HalamanController extends Controller
 
                 $pemakaian = Pemakaian::create([
                     'nama' => $request->nama,
-                    'nomor' => $request->nomor,
+                    'nomor' => NomorWhatsapp::normalize($request->nomor),
                     'lab_id' => $request->lab_id,
                     'matakuliah_id' => $request->matakuliah_id,
                     'program_id' => $request->program_id,
@@ -611,7 +614,7 @@ class HalamanController extends Controller
                 "{$linkJadwal}\n\n" .
                 "Terima kasih atas perhatiannya.";
 
-            $result = app(WahaClient::class)->send($destination, $stringPesanan);
+            $result = app(FonnteClient::class)->send($destination, $stringPesanan);
 
             if (!$result['ok']) {
                 $results['gagal']++;
@@ -699,7 +702,7 @@ class HalamanController extends Controller
             "https://laboratorium.sugenghartono.ac.id/jadwallab\n" .
             "Terima Kasih Banyak";
 
-        return app(WahaClient::class)->send($nomor, $text);
+        return app(FonnteClient::class)->send($nomor, $text);
     }
 
 }

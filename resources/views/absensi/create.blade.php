@@ -137,7 +137,7 @@
                             <div class="col-md-4">
                                 <label for="hp" class="form-label">Nomor WhatsApp / HP</label>
                                 <input type="text" name="hp" id="hp" class="form-control"
-                                    placeholder="Contoh: 081234567890" inputmode="numeric"
+                                    placeholder="08... atau 628..." inputmode="numeric"
                                     oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="15"
                                     value="{{ old('hp') }}">
                             </div>

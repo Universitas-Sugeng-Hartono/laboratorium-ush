@@ -10,7 +10,9 @@ use App\Models\Laboratorium;
 use App\Models\User;
 use App\Models\Alat;
 use App\Models\Bahan;
-use App\Services\WahaClient;
+use App\Rules\NomorWhatsappRule;
+use App\Services\FonnteClient;
+use App\Support\NomorWhatsapp;
 use App\Http\Controllers\HalamanController;
 use Illuminate\Http\Request;
 use PDF;
@@ -128,6 +130,7 @@ class PemakaianController extends Controller
     {
         $request->validate([
             'keperluan' => 'required|string',
+            'nomor' => ['nullable', 'string', 'max:20', new NomorWhatsappRule],
         ]);
 
         $data = $request->only([
@@ -143,6 +146,9 @@ class PemakaianController extends Controller
         }
 
         unset($data['status_pengembalian']);
+        if (array_key_exists('nomor', $data)) {
+            $data['nomor'] = NomorWhatsapp::normalize($data['nomor']);
+        }
 
         try {
             DB::transaction(function () use ($id, $data) {
@@ -224,7 +230,7 @@ Harap segera mengembalikan peminjaman alat atau bahan digunakan.
 Terima kasih banyak
 STR;
 
-        $result = app(WahaClient::class)->send((string) $pemakaian->nomor, $text);
+        $result = app(FonnteClient::class)->send((string) $pemakaian->nomor, $text);
         if (!$result['ok']) {
             return redirect()->back()->with('error', 'Gagal mengirim WhatsApp: ' . $result['error']);
         }

@@ -282,7 +282,7 @@
                             <!-- Nomor HP / WhatsApp -->
                             <div class="col-md-4">
                                 <label for="hp" class="form-label small fw-semibold text-secondary">Nomor Handphone / WhatsApp <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control rounded-3" name="hp" id="hp" placeholder="Contoh: 081234567890" required value="{{ old('hp') }}">
+                                <input type="text" class="form-control rounded-3" name="hp" id="hp" placeholder="08... atau 628..." inputmode="numeric" maxlength="15" required value="{{ old('hp') }}">
                             </div>
 
                             <!-- Jumlah Tamu -->

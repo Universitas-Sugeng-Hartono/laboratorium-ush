@@ -61,7 +61,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="nomor">Nomor WhatsApp</label>
-                                <input type="text" name="nomor" id="nomor" class="form-control" value="{{ old('nomor', $pemakaian->nomor) }}">
+                                <input type="text" name="nomor" id="nomor" class="form-control" inputmode="numeric" maxlength="15" placeholder="08... atau 628..." value="{{ old('nomor', $pemakaian->nomor) }}">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="lab_id">Laboratorium</label>

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Matkul;
 use App\Models\{Program, Ta, Jadwal, Jurnal, Pemakaian};
+use App\Rules\NomorWhatsappRule;
+use App\Support\NomorWhatsapp;
 use App\Traits\RejectsDeleteWhenUsed;
 
 class MataKuliahController extends Controller
@@ -67,12 +69,12 @@ class MataKuliahController extends Controller
             'matakuliah' => 'required|string|max:255',
             'dosen' => 'required|string|max:255',
             'program_id' => 'required|exists:program,id',
-            'nomor' => 'nullable|string|max:50',
+            'nomor' => ['nullable', 'string', 'max:20', new NomorWhatsappRule],
             'ta_id' => 'nullable|exists:ta,id',
         ]);
 
         $taId = $request->filled('ta_id') ? $request->ta_id : ($taAktif ? $taAktif->id : null);
-        $nomor = $request->filled('nomor') ? preg_replace('/[^0-9]/', '', $request->nomor) : null;
+        $nomor = NomorWhatsapp::normalize($request->nomor);
 
         Matkul::create([
             'matakuliah' => trim($validated['matakuliah']),
@@ -99,11 +101,11 @@ class MataKuliahController extends Controller
             'matakuliah' => 'required|string|max:255',
             'dosen' => 'required|string|max:255',
             'program_id' => 'required|exists:program,id',
-            'nomor' => 'nullable|string|max:50',
+            'nomor' => ['nullable', 'string', 'max:20', new NomorWhatsappRule],
             'ta_id' => 'nullable|exists:ta,id',
         ]);
 
-        $nomor = $request->filled('nomor') ? preg_replace('/[^0-9]/', '', $request->nomor) : null;
+        $nomor = NomorWhatsapp::normalize($request->nomor);
 
         $matkul->update([
             'matakuliah' => trim($validated['matakuliah']),
@@ -290,12 +292,15 @@ class MataKuliahController extends Controller
                 }
             }
 
-            // Normalize Nomor HP
             if ($nomor !== null && $nomor !== '') {
-                if (is_numeric($nomor) && str_contains(strval($nomor), 'E+')) {
-                    $nomor = number_format((float)$nomor, 0, '', '');
-                } else {
-                    $nomor = preg_replace('/[^0-9]/', '', (string)$nomor);
+                if (is_numeric($nomor) && preg_match('/e/i', (string) $nomor)) {
+                    $nomor = number_format((float) $nomor, 0, '', '');
+                }
+                try {
+                    $nomor = NomorWhatsapp::normalize((string) $nomor);
+                } catch (\InvalidArgumentException $e) {
+                    $errors[] = "Baris {$rowNumber} ({$matakuliah}): {$e->getMessage()}";
+                    continue;
                 }
             } else {
                 $nomor = null;

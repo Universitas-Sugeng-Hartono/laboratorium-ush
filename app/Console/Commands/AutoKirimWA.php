@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Jadwal;
 use App\Models\Ta;
-use App\Services\WahaClient;
+use App\Services\FonnteClient;
 use Carbon\Carbon;
 
 class AutoKirimWA extends Command
@@ -36,7 +36,7 @@ class AutoKirimWA extends Command
         }
 
         $sent = 0;
-        $waha = app(WahaClient::class);
+        $fonnte = app(FonnteClient::class);
 
         foreach ($jadwals as $jadwal) {
             $jadwalTime = Carbon::parse($jadwal->jadwal, 'Asia/Jakarta');
@@ -64,7 +64,7 @@ class AutoKirimWA extends Command
                 "https://laboratorium.sugenghartono.ac.id/jadwallab\n" .
                 "Terima Kasih Banyak";
 
-            $result = $waha->send($nomor, $text);
+            $result = $fonnte->send($nomor, $text);
             if (!$result['ok']) {
                 $this->error("Gagal kirim {$matkul}: {$result['error']}");
                 continue;

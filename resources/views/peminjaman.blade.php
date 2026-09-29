@@ -347,8 +347,8 @@
 
                         <div class="col-md-6">
                             <label class="form-label">Nomor WhatsApp / HP Aktif <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="nomor" id="inputNomor" value="{{ old('nomor') }}" placeholder="Contoh: 081234567890" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="15" required>
-                            <small class="text-muted font-11">Akan digunakan untuk notifikasi WhatsApp (hanya angka, 10–15 digit).</small>
+                            <input type="text" class="form-control" name="nomor" id="inputNomor" value="{{ old('nomor') }}" placeholder="08... atau 628..." inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="15" required>
+                            <small class="text-muted font-11">Awalan 08 atau 628. Nomor disimpan sebagai 628.</small>
                         </div>
 
                         <div class="col-md-4">
@@ -1134,13 +1134,12 @@
                     return;
                 }
 
-                // 2. Validasi Nomor WhatsApp (hanya angka, 10-15 digit)
                 const nomor = peminjamanForm.querySelector('[name="nomor"]').value.trim();
-                if (!/^[0-9]{10,15}$/.test(nomor)) {
+                if (!/^(08\d{8,12}|628\d{8,12})$/.test(nomor)) {
                     Swal.fire({
                         icon: 'warning',
                         title: 'Nomor WhatsApp Tidak Sesuai',
-                        text: 'Nomor WhatsApp harus berupa angka dengan panjang antara 10 hingga 15 digit (contoh: 081234567890).',
+                        text: 'Nomor WhatsApp harus diawali 08 atau 628.',
                         confirmButtonColor: '#4f46e5'
                     });
                     return;

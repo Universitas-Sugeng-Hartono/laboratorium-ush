@@ -133,8 +133,9 @@
                             <div class="col-md-5">
                                 <label for="nomor" class="form-label">No. WhatsApp / HP Dosen</label>
                                 <input type="tel" name="nomor" id="nomor" class="form-control"
-                                    placeholder="Contoh: 081234567890" value="{{ old('nomor') }}">
-                                <div class="form-text">Untuk notifikasi WhatsApp otomatis.</div>
+                                    placeholder="08... atau 628..." inputmode="numeric" maxlength="15"
+                                    value="{{ old('nomor') }}">
+                                <div class="form-text">Awalan 08 atau 628. Nomor disimpan sebagai 628.</div>
                             </div>
 
                             <div class="col-md-6">
