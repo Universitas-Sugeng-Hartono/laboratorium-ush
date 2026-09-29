@@ -122,7 +122,7 @@ class JadwalController extends Controller
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray(null, true, true, false);
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Gagal membaca file: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal membaca berkas. Gunakan template Excel atau CSV.');
         }
 
         if (empty($rows)) {
@@ -140,15 +140,16 @@ class JadwalController extends Controller
 
         $header = array_shift($rows);
         $columnMap = $this->mapCsvHeaders($header);
-        $required = ['lab_id', 'program_id', 'matakuliah_id', 'tanggal', 'jam'];
-        foreach ($required as $col) {
-            if (!isset($columnMap[$col])) {
-                return redirect()->back()->with('error', "Kolom wajib tidak ditemukan di baris header: {$col}");
-            }
+        $hasLab = isset($columnMap['laboratorium']) || isset($columnMap['lab_id']);
+        $hasProgram = isset($columnMap['program']) || isset($columnMap['program_id']);
+        $hasMatkul = isset($columnMap['matakuliah']) || isset($columnMap['matakuliah_id']);
+        if (!$hasLab || !$hasProgram || !$hasMatkul || !isset($columnMap['tanggal']) || !isset($columnMap['jam'])) {
+            return redirect()->back()->with('error', 'Header berkas harus memuat laboratorium, program studi, mata kuliah, tanggal, dan jam.');
         }
 
         $rowNumber = 1;
-        $successRows = 0;
+        $addedRows = 0;
+        $skippedRows = 0;
         $createdCount = 0;
         $errors = [];
 
@@ -165,20 +166,24 @@ class JadwalController extends Controller
             }
 
             try {
-                $this->importCsvRow($data);
-                $successRows++;
-                $createdCount += 8;
+                $result = $this->importCsvRow($data);
+                if ($result === 'skipped') {
+                    $skippedRows++;
+                } else {
+                    $addedRows++;
+                    $createdCount += 8;
+                }
             } catch (\InvalidArgumentException $e) {
-                $label = $data['matakuliah'] ?? "baris {$rowNumber}";
+                $label = $data['matakuliah'] ?? ($data['matakuliah_id'] ?? "baris {$rowNumber}");
                 $errors[] = "Baris {$rowNumber} ({$label}): {$e->getMessage()}";
             }
         }
 
-        if ($successRows === 0 && empty($errors)) {
+        if ($addedRows === 0 && $skippedRows === 0 && empty($errors)) {
             return redirect()->back()->with('error', 'Tidak ada data valid di file yang diunggah.');
         }
 
-        $message = "Import selesai: {$successRows} baris ({$createdCount} jadwal) berhasil ditambahkan.";
+        $message = "Import selesai: {$addedRows} baris ditambahkan ({$createdCount} jadwal), {$skippedRows} baris dilewati karena jadwal sudah ada.";
         if (!empty($errors)) {
             $message .= ' ' . count($errors) . ' baris gagal.';
         }
@@ -264,11 +269,22 @@ class JadwalController extends Controller
         }
     }
 
-    private function importCsvRow(array $data): void
+    private function importCsvRow(array $data): string
     {
-        $labId = $this->parseRequiredInt($data['lab_id'] ?? '', 'lab_id');
-        $programId = $this->parseRequiredInt($data['program_id'] ?? '', 'program_id');
-        $matakuliahId = $this->parseRequiredInt($data['matakuliah_id'] ?? '', 'matakuliah_id');
+        $labId = $this->resolveImportId(
+            $data['laboratorium'] ?? '',
+            $data['lab_id'] ?? '',
+            Laboratorium::all(),
+            'laboratorium',
+            'Laboratorium'
+        );
+        $programId = $this->resolveImportId(
+            $data['program'] ?? '',
+            $data['program_id'] ?? '',
+            Program::all(),
+            'program',
+            'Program studi'
+        );
         $tanggal = $data['tanggal'] ?? '';
         $jam = $data['jam'] ?? '';
         $jamSelesai = $data['jam_selesai'] ?? null;
@@ -291,22 +307,33 @@ class JadwalController extends Controller
             throw new \InvalidArgumentException('jam wajib diisi');
         }
 
-        if (!Laboratorium::where('id', $labId)->exists()) {
-            throw new \InvalidArgumentException("lab_id {$labId} tidak ditemukan");
-        }
-        if (!Program::where('id', $programId)->exists()) {
-            throw new \InvalidArgumentException("program_id {$programId} tidak ditemukan");
-        }
-
         $taAktif = Ta::where('status', 'aktif')->first();
-        $matkul = Matkul::where('id', $matakuliahId)
-            ->where('program_id', $programId)
-            ->where('ta_id', $taAktif->id)
-            ->first();
+        $matkulName = trim((string) ($data['matakuliah'] ?? ''));
+        $matkulIdRaw = trim((string) ($data['matakuliah_id'] ?? ''));
+        $matkul = null;
 
-        if (!$matkul) {
-            throw new \InvalidArgumentException("matakuliah_id {$matakuliahId} tidak valid untuk program/TA aktif");
+        if ($matkulName !== '') {
+            $needle = mb_strtolower($matkulName);
+            $matkul = Matkul::where('program_id', $programId)
+                ->where('ta_id', $taAktif->id)
+                ->whereRaw('LOWER(matakuliah) = ?', [$needle])
+                ->first();
+            if (!$matkul) {
+                throw new \InvalidArgumentException("Mata kuliah '{$matkulName}' tidak ditemukan pada program studi dan tahun akademik aktif");
+            }
+        } elseif ($matkulIdRaw !== '' && ctype_digit($matkulIdRaw)) {
+            $matkul = Matkul::where('id', (int) $matkulIdRaw)
+                ->where('program_id', $programId)
+                ->where('ta_id', $taAktif->id)
+                ->first();
+            if (!$matkul) {
+                throw new \InvalidArgumentException('Mata kuliah tidak valid untuk program studi dan tahun akademik aktif');
+            }
+        } else {
+            throw new \InvalidArgumentException('Nama mata kuliah wajib diisi');
         }
+
+        $matakuliahId = $matkul->id;
 
         try {
             $tanggalAwal = Carbon::parse($tanggal . ' ' . $jam);
@@ -318,7 +345,49 @@ class JadwalController extends Controller
             $jamSelesai = $tanggalAwal->copy()->addMinutes(170)->format('H:i');
         }
 
+        $slots = [];
+        for ($i = 0; $i < 8; $i++) {
+            $slots[] = $tanggalAwal->copy()->addWeeks($i)->format('Y-m-d H:i:s');
+        }
+
+        $alreadyExists = Jadwal::where('matakuliah_id', $matakuliahId)
+            ->where('program_id', $programId)
+            ->where('lab_id', $labId)
+            ->whereIn('jadwal', $slots)
+            ->exists();
+
+        if ($alreadyExists) {
+            return 'skipped';
+        }
+
         $this->createWeeklySchedules($matakuliahId, $programId, $labId, $tanggalAwal, $jamSelesai);
+
+        return 'created';
+    }
+
+    private function resolveImportId(string $name, string $idValue, $records, string $field, string $label): int
+    {
+        $name = trim($name);
+        if ($name !== '') {
+            $needle = mb_strtolower($name);
+            $match = $records->first(function ($record) use ($needle, $field) {
+                return mb_strtolower(trim((string) $record->{$field})) === $needle;
+            });
+            if (!$match) {
+                throw new \InvalidArgumentException("{$label} '{$name}' tidak ditemukan");
+            }
+            return (int) $match->id;
+        }
+
+        if ($idValue !== '' && ctype_digit($idValue)) {
+            $match = $records->firstWhere('id', (int) $idValue);
+            if (!$match) {
+                throw new \InvalidArgumentException("{$label} tidak ditemukan");
+            }
+            return (int) $match->id;
+        }
+
+        throw new \InvalidArgumentException("{$label} wajib diisi");
     }
 
     private function mapCsvHeaders(array $header): array
@@ -328,10 +397,14 @@ class JadwalController extends Controller
             $rawKey = strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', (string) $name)));
             if ($rawKey === '') continue;
 
-            if (str_contains($rawKey, 'lab_id')) {
+            if ($rawKey === 'lab_id' || str_ends_with($rawKey, 'lab_id')) {
                 $map['lab_id'] = $index;
-            } elseif (str_contains($rawKey, 'program_id')) {
+            } elseif (str_contains($rawKey, 'laboratorium') || $rawKey === 'lab') {
+                $map['laboratorium'] = $index;
+            } elseif ($rawKey === 'program_id' || str_ends_with($rawKey, 'program_id')) {
                 $map['program_id'] = $index;
+            } elseif (str_contains($rawKey, 'program') || str_contains($rawKey, 'prodi') || str_contains($rawKey, 'jurusan')) {
+                $map['program'] = $index;
             } elseif (str_contains($rawKey, 'matakuliah_id') || str_contains($rawKey, 'matkul_id')) {
                 $map['matakuliah_id'] = $index;
             } elseif (str_contains($rawKey, 'tanggal')) {
@@ -342,7 +415,7 @@ class JadwalController extends Controller
                 if (!isset($map['jam'])) {
                     $map['jam'] = $index;
                 }
-            } elseif (str_contains($rawKey, 'matakuliah') || str_contains($rawKey, 'matkul')) {
+            } elseif (str_contains($rawKey, 'matakuliah') || str_contains($rawKey, 'mata_kuliah') || str_contains($rawKey, 'matkul')) {
                 $map['matakuliah'] = $index;
             }
         }
@@ -359,11 +432,4 @@ class JadwalController extends Controller
         return true;
     }
 
-    private function parseRequiredInt(string $value, string $field): int
-    {
-        if ($value === '' || !ctype_digit($value)) {
-            throw new \InvalidArgumentException("{$field} harus berupa angka");
-        }
-        return (int) $value;
-    }
 }

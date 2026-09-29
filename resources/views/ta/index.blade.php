@@ -141,7 +141,7 @@
         </div>
         <div class="col-5 align-self-center">
             <div class="d-flex justify-content-end gap-2">
-                <a href="{{ route('ta.otomatis') }}" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm d-flex align-items-center" onclick="return confirm('Generate otomatis Tahun Akademik untuk semester selanjutnya dan set sebagai aktif?')">
+                <a href="{{ route('ta.otomatis') }}" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm d-flex align-items-center" onclick="return confirm('Buat tahun akademik semester berikutnya dan jadikan aktif?')">
                     <i class="fa fa-wand-magic-sparkles me-2 text-warning"></i> Generate TA Otomatis
                 </a>
                 <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm d-flex align-items-center ms-2" data-bs-toggle="modal" data-bs-target="#modalTambahTa">

@@ -221,6 +221,17 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     @endif
+    @if(session('import_errors'))
+    <div class="alert alert-warning alert-dismissible fade show border-0 shadow-sm" style="border-radius: 10px;" role="alert">
+        <strong>Detail baris gagal:</strong>
+        <ul class="mb-0 mt-1 small">
+            @foreach(session('import_errors') as $err)
+            <li>{{ $err }}</li>
+            @endforeach
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
 
     <!-- Filter Card -->
     <div class="filter-card">
@@ -282,6 +293,9 @@
             <a href="{{ route('alat.cetak.qr.batch', request()->query()) }}" target="_blank" class="btn-modern-light">
                 <i class="fas fa-qrcode me-1 text-muted"></i> Cetak QR ({{ $alat->total() }})
             </a>
+            <button type="button" class="btn-modern-light" data-bs-toggle="modal" data-bs-target="#importAlatModal">
+                <i class="fas fa-file-excel me-1 text-success"></i> Import Excel / CSV
+            </button>
             <a href="{{ route('alat.create') }}" class="btn-modern-primary">
                 <i class="fas fa-plus"></i> Tambah Alat
             </a>
@@ -382,6 +396,40 @@
             {{ $alat->links() }}
         </div>
         @endif
+    </div>
+</div>
+
+<div class="modal fade app-modal" id="importAlatModal" tabindex="-1" aria-labelledby="importAlatModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="importAlatModalLabel">Import alat</h5>
+                    <p class="modal-kicker">Isi nama laboratorium. Kode yang sudah ada memperbarui jumlah dan kondisi.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <form action="{{ route('alat.import') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body">
+                    <div class="field">
+                        <label for="import-alat-file">Berkas Excel atau CSV <span class="req">*</span></label>
+                        <input id="import-alat-file" type="file" name="excel_file" class="form-control" accept=".xlsx,.xls,.csv,.txt" required>
+                    </div>
+                    <div class="template-box">
+                        <div class="section-label">Template</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a href="{{ route('alat.template') }}" class="btn-modal-save" download>Excel (.xlsx)</a>
+                            <a href="{{ route('alat.template', ['format' => 'csv']) }}" class="btn-modal-cancel" download>CSV (.csv)</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-modal-cancel" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn-modal-save">Import alat</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 @endsection

@@ -58,6 +58,10 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:super,laboran')->group(function () {
+        Route::get('/alat/template', [AlatController::class, 'downloadTemplate'])->name('alat.template');
+        Route::post('/alat/import', [AlatController::class, 'import'])->name('alat.import');
+        Route::get('/bahan/template', [BahanController::class, 'downloadTemplate'])->name('bahan.template');
+        Route::post('/bahan/import', [BahanController::class, 'import'])->name('bahan.import');
         Route::get('/alat/cetak-qr-batch', [AlatController::class, 'cetakQrBatch'])->name('alat.cetak.qr.batch');
         Route::get('/alat/{id}/cetak-qr', [AlatController::class, 'cetakQr'])->name('alat.cetak.qr');
         Route::resource('alat', AlatController::class);

@@ -337,7 +337,7 @@
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title" id="importMatkulModalLabel">Import mata kuliah</h5>
-                    <p class="modal-kicker">Unggah daftar mata kuliah dan dosen pengampu.</p>
+                    <p class="modal-kicker">Nama yang sama pada program studi dan tahun akademik yang sama diperbarui, tidak digandakan.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>

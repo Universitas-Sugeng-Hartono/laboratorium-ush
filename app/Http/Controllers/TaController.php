@@ -58,7 +58,7 @@ class TaController extends Controller
             'status' => 'aktif',
         ]);
     
-        return redirect()->route('ta.index')->with('success', "Tahun Akademik $newTA berhasil digenerate dan diaktifkan!");
+        return redirect()->route('ta.index')->with('success', "Tahun akademik $newTA berhasil dibuat dan diaktifkan.");
     }
 
     public function create()

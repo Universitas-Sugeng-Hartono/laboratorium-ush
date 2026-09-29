@@ -45,7 +45,7 @@ class LaboratoriumController extends Controller
 
         Laboratorium::create(['laboratorium' => $request->laboratorium]);
 
-        return redirect()->route('laboratorium.index')->with('success', 'Laboratorium created successfully!');
+        return redirect()->route('laboratorium.index')->with('success', 'Laboratorium berhasil ditambahkan.');
     }
 
     public function edit($id)
@@ -63,7 +63,7 @@ class LaboratoriumController extends Controller
         $labo = Laboratorium::findOrFail($id);
         $labo->update(['laboratorium' => $request->laboratorium]);
 
-        return redirect()->route('laboratorium.index')->with('success', 'Laboratorium updated successfully!');
+        return redirect()->route('laboratorium.index')->with('success', 'Laboratorium berhasil diperbarui.');
     }
 
     public function destroy($id)

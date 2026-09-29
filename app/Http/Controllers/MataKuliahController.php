@@ -173,7 +173,7 @@ class MataKuliahController extends Controller
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray(null, true, true, false);
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Gagal membaca file: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal membaca berkas. Gunakan template Excel atau CSV.');
         }
 
         if (empty($rows)) {
@@ -304,14 +304,12 @@ class MataKuliahController extends Controller
             // Check existing record in same Program and TA
             $existing = Matkul::where('program_id', $programId)
                 ->where('ta_id', $taId)
-                ->where(function ($sub) use ($matakuliah) {
-                    $sub->where('matakuliah', $matakuliah)
-                        ->orWhere('matakuliah', 'like', $matakuliah);
-                })
+                ->whereRaw('LOWER(matakuliah) = ?', [mb_strtolower($matakuliah)])
                 ->first();
 
             if ($existing) {
                 $existing->update([
+                    'matakuliah' => $matakuliah,
                     'dosen' => $dosen,
                     'nomor' => $nomor ?: $existing->nomor,
                 ]);

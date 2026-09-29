@@ -212,6 +212,17 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     @endif
+    @if(session('import_errors'))
+    <div class="alert alert-warning alert-dismissible fade show border-0 shadow-sm" style="border-radius: 10px;" role="alert">
+        <strong>Detail baris gagal:</strong>
+        <ul class="mb-0 mt-1 small">
+            @foreach(session('import_errors') as $err)
+            <li>{{ $err }}</li>
+            @endforeach
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
 
     <!-- Filter Card -->
     <div class="filter-card">
@@ -260,7 +271,10 @@
             <span class="summary-text">Menampilkan <strong>{{ $bahan->firstItem() ?? 0 }}–{{ $bahan->lastItem() ?? 0 }}</strong> dari <strong>{{ $bahan->total() }}</strong> jenis bahan</span>
             @include('layout.per-page', ['default' => 25])
         </div>
-        <div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn-modern-light" data-bs-toggle="modal" data-bs-target="#importBahanModal">
+                <i class="fas fa-file-excel me-1 text-success"></i> Import Excel / CSV
+            </button>
             <a href="{{ route('bahan.create') }}" class="btn-modern-primary">
                 <i class="fas fa-plus"></i> Tambah Bahan
             </a>
@@ -351,6 +365,40 @@
             {{ $bahan->links() }}
         </div>
         @endif
+    </div>
+</div>
+
+<div class="modal fade app-modal" id="importBahanModal" tabindex="-1" aria-labelledby="importBahanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="importBahanModalLabel">Import bahan</h5>
+                    <p class="modal-kicker">Isi nama laboratorium. Kode yang sudah ada memperbarui jumlah.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <form action="{{ route('bahan.import') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body">
+                    <div class="field">
+                        <label for="import-bahan-file">Berkas Excel atau CSV <span class="req">*</span></label>
+                        <input id="import-bahan-file" type="file" name="excel_file" class="form-control" accept=".xlsx,.xls,.csv,.txt" required>
+                    </div>
+                    <div class="template-box">
+                        <div class="section-label">Template</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a href="{{ route('bahan.template') }}" class="btn-modal-save" download>Excel (.xlsx)</a>
+                            <a href="{{ route('bahan.template', ['format' => 'csv']) }}" class="btn-modal-cancel" download>CSV (.csv)</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-modal-cancel" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn-modal-save">Import bahan</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 @endsection

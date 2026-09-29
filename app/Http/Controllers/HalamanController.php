@@ -375,7 +375,11 @@ class HalamanController extends Controller
 
             return redirect('/lihatpeminjaman')->with('success', 'Permohonan peminjaman laboratorium berhasil dikirim! Silakan pantau status persetujuan pada tabel.');
         } catch (\Exception $e) {
-            return redirect()->back()->withInput()->with('error', $e->getMessage());
+            $message = $e->getMessage();
+            if ($e instanceof \Illuminate\Database\QueryException || str_contains($message, 'SQLSTATE')) {
+                $message = 'Data tidak dapat diproses. Periksa isian Anda, atau hubungi admin jika masalah ini berulang.';
+            }
+            return redirect()->back()->withInput()->with('error', $message);
         }
     }
 

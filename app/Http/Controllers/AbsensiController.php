@@ -155,6 +155,6 @@ class AbsensiController extends Controller
         $absen = Absensi::findOrFail($id);
         $absen->delete();
 
-        return redirect()->route('absensi.index')->with('success', 'Absensi deleted successfully!');
+        return redirect()->route('absensi.index')->with('success', 'Data kunjungan tamu berhasil dihapus.');
     }
 }

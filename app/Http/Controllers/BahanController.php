@@ -141,4 +141,198 @@ class BahanController extends Controller
 
         return $this->deleteOrReject($bahan, 'bahan.index', 'Bahan berhasil dihapus!');
     }
+
+    public function downloadTemplate(Request $request)
+    {
+        return $this->sendImportTemplate($request, 'bahan_import_template', 'Template_Import_Bahan_SILABO');
+    }
+
+    public function import(Request $request)
+    {
+        $rows = $this->readImportRows($request);
+        if ($rows instanceof \Illuminate\Http\RedirectResponse) {
+            return $rows;
+        }
+
+        $header = array_shift($rows);
+        $map = $this->mapInventoryHeaders($header, [
+            'kode' => ['kode'],
+            'nama' => ['nama_bahan', 'bahan', 'nama'],
+            'jumlah' => ['jumlah', 'qty', 'stok'],
+            'satuan' => ['satuan'],
+            'laboratorium' => ['laboratorium', 'lab', 'nama_lab'],
+        ]);
+
+        if (!isset($map['kode'], $map['nama'], $map['jumlah'], $map['laboratorium'])) {
+            return redirect()->back()->with('error', 'Header berkas harus memuat kode, nama bahan, jumlah, dan laboratorium.');
+        }
+
+        $labs = Laboratorium::all();
+        $rowNumber = 1;
+        $created = 0;
+        $updated = 0;
+        $errors = [];
+
+        foreach ($rows as $row) {
+            $rowNumber++;
+            if ($this->importRowEmpty($row)) {
+                continue;
+            }
+
+            $kode = trim((string) ($row[$map['kode']] ?? ''));
+            $nama = trim((string) ($row[$map['nama']] ?? ''));
+            $jumlahRaw = trim((string) ($row[$map['jumlah']] ?? ''));
+            $satuan = isset($map['satuan']) ? trim((string) ($row[$map['satuan']] ?? '')) : '';
+            $labName = trim((string) ($row[$map['laboratorium']] ?? ''));
+            $label = $kode !== '' ? $kode : ($nama !== '' ? $nama : 'baris ' . $rowNumber);
+
+            if ($kode === '') {
+                $errors[] = "Baris {$rowNumber}: Kode wajib diisi.";
+                continue;
+            }
+            if ($jumlahRaw === '' || !is_numeric($jumlahRaw) || (int) $jumlahRaw < 0) {
+                $errors[] = "Baris {$rowNumber} ({$label}): Jumlah harus berupa angka.";
+                continue;
+            }
+
+            $lab = $this->findLabByName($labs, $labName);
+            if (!$lab) {
+                $errors[] = "Baris {$rowNumber} ({$label}): Laboratorium '{$labName}' tidak ditemukan.";
+                continue;
+            }
+
+            $existing = Bahan::whereRaw('LOWER(kode) = ?', [mb_strtolower($kode)])->first();
+            if ($existing) {
+                $existing->update([
+                    'jumlah' => (int) $jumlahRaw,
+                ]);
+                $updated++;
+                continue;
+            }
+
+            if ($nama === '') {
+                $errors[] = "Baris {$rowNumber} ({$label}): Nama bahan wajib diisi untuk data baru.";
+                continue;
+            }
+
+            Bahan::create([
+                'kode' => $kode,
+                'bahan' => $nama,
+                'jumlah' => (int) $jumlahRaw,
+                'satuan' => $satuan !== '' ? $satuan : 'Pcs',
+                'lab_id' => $lab->id,
+                'stok_minimum' => 0,
+            ]);
+            $created++;
+        }
+
+        return $this->importResult('bahan.index', $created, $updated, $errors, 'bahan');
+    }
+
+    private function findLabByName($labs, string $name)
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return null;
+        }
+        $needle = mb_strtolower($name);
+
+        return $labs->first(function ($lab) use ($needle) {
+            return mb_strtolower(trim((string) $lab->laboratorium)) === $needle;
+        });
+    }
+
+    private function readImportRows(Request $request)
+    {
+        $request->validate([
+            'excel_file' => 'required|file|max:10240',
+        ]);
+
+        $uploadedFile = $request->file('excel_file');
+        $ext = strtolower($uploadedFile->getClientOriginalExtension());
+        if (!in_array($ext, ['xlsx', 'xls', 'csv', 'txt'])) {
+            return redirect()->back()->with('error', 'Format berkas tidak didukung. Unggah berkas .xlsx, .xls, atau .csv.');
+        }
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($uploadedFile->getRealPath());
+            $rows = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal membaca berkas. Gunakan template Excel atau CSV.');
+        }
+
+        if (isset($rows[0][0]) && str_starts_with(strtolower(trim((string) $rows[0][0])), 'sep=')) {
+            array_shift($rows);
+        }
+
+        if (empty($rows) || count($rows) < 2) {
+            return redirect()->back()->with('error', 'Berkas yang diunggah kosong.');
+        }
+
+        return $rows;
+    }
+
+    private function mapInventoryHeaders(array $header, array $aliases): array
+    {
+        $map = [];
+        foreach ($header as $index => $name) {
+            $rawKey = strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', (string) $name)));
+            $rawKey = str_replace([' ', '-'], '_', $rawKey);
+            if ($rawKey === '') {
+                continue;
+            }
+            foreach ($aliases as $field => $names) {
+                if (in_array($rawKey, $names, true) && !isset($map[$field])) {
+                    $map[$field] = $index;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    private function importRowEmpty(array $row): bool
+    {
+        foreach ($row as $cell) {
+            if (trim((string) $cell) !== '') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function importResult(string $route, int $created, int $updated, array $errors, string $noun)
+    {
+        if ($created === 0 && $updated === 0 && $errors === []) {
+            return redirect()->back()->with('error', 'Tidak ada data valid pada berkas.');
+        }
+
+        $message = "Import selesai: {$created} {$noun} ditambahkan, {$updated} {$noun} diperbarui.";
+        if ($errors !== []) {
+            $message .= ' ' . count($errors) . ' baris gagal.';
+        }
+
+        return redirect()->route($route)->with('success', $message)->with('import_errors', $errors);
+    }
+
+    private function sendImportTemplate(Request $request, string $basename, string $downloadName)
+    {
+        $format = strtolower($request->get('format', 'xlsx'));
+        if ($format === 'csv') {
+            $path = public_path('templates/' . $basename . '.csv');
+            if (file_exists($path)) {
+                return response()->download($path, $downloadName . '.csv', ['Content-Type' => 'text/csv']);
+            }
+        }
+
+        $path = public_path('templates/' . $basename . '.xlsx');
+        if (file_exists($path)) {
+            return response()->download($path, $downloadName . '.xlsx', [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ]);
+        }
+
+        return redirect()->back()->with('error', 'Berkas template belum tersedia.');
+    }
 }

@@ -2,7 +2,9 @@
 
 namespace App\Exceptions;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Throwable;
 
 class Handler extends ExceptionHandler
 {
@@ -33,5 +35,22 @@ class Handler extends ExceptionHandler
     public function register()
     {
         //
+    }
+
+    public function render($request, Throwable $exception)
+    {
+        if ($exception instanceof QueryException || $exception instanceof \PDOException) {
+            report($exception);
+
+            $message = 'Data tidak dapat diproses. Periksa isian Anda, atau hubungi admin jika masalah ini berulang.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 500);
+            }
+
+            return redirect()->back()->withInput()->with('error', $message);
+        }
+
+        return parent::render($request, $exception);
     }
 }

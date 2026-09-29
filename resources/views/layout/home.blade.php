@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html dir="ltr" lang="en">
+<html dir="ltr" lang="id">
 
 <head>
     <meta charset="utf-8">
@@ -95,6 +95,24 @@
         .sidebar-nav ul .sidebar-item.selected > .sidebar-link i,
         .sidebar-nav ul .sidebar-item.selected > .sidebar-link span {
             color: #ffffff !important;
+        }
+        .sidebar-nav #sidebarnav a.has-arrow,
+        .sidebar-nav #sidebarnav .sidebar-item.selected > a.has-arrow,
+        .sidebar-nav #sidebarnav .sidebar-item.active > a.has-arrow {
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #2a3547 !important;
+            box-shadow: none !important;
+        }
+        .sidebar-nav #sidebarnav a.has-arrow i,
+        .sidebar-nav #sidebarnav a.has-arrow .feather-icon,
+        .sidebar-nav #sidebarnav a.has-arrow span {
+            color: #2a3547 !important;
+        }
+        .sidebar-nav #sidebarnav li.selected > a.has-arrow::after,
+        .sidebar-nav #sidebarnav li.active > a.has-arrow::after,
+        .sidebar-nav #sidebarnav a.has-arrow.active::after {
+            border-color: #2a3547 !important;
         }
         .sidebar-nav .nav-small-cap {
             font-size: 10.5px !important;
@@ -283,15 +301,18 @@
         }
 
         #main-wrapper[data-layout=vertical][data-sidebar-position=fixed] .left-sidebar {
-            position: absolute;
-            height: auto;
-            overflow: visible;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            height: 100vh;
+            overflow: hidden;
         }
         .scroll-sidebar,
         .scroll-sidebar.ps {
-            height: auto !important;
+            height: 100% !important;
             max-height: none !important;
-            overflow: visible !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
         }
     </style>
     <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script> -->
@@ -343,7 +364,7 @@
                                 <i data-feather="maximize" class="svg-icon"></i>
                             </a>
                         </li>
-                        <li class="nav-item dropdown">
+                        <li class="nav-item dropdown d-none">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                                 data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Mode Night">
                                 <i data-feather="moon" class="svg-icon"></i>
@@ -356,7 +377,7 @@
                                 </div>
                             </a>
                         </li>
-                        <li class="nav-item d-none d-md-block">
+                        <li class="nav-item d-none">
                             <a class="nav-link" href="javascript:void(0)">
                                 <div class="customize-input">
                                     <select id="languageSelect"
@@ -369,7 +390,7 @@
                         </li>
                     </ul>
                     <ul class="navbar-nav float-end">
-                        <li class="nav-item d-none d-md-block">
+                        <li class="nav-item d-none">
                             <a class="nav-link" href="javascript:void(0)">
                                 <form>
                                     <div class="customize-input">
@@ -386,14 +407,14 @@
                                 <img src="{{asset('assets/images/users/1.jpg') }}" alt="user" class="rounded-circle"
                                     width="40">
                                 @php $headerName = Auth::user()->name ?? session('siakad_user_name', 'Pengguna'); @endphp
-                                <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span
+                                <span class="ms-2 d-none d-lg-inline-block"><span>Halo,</span> <span
                                         class="text-dark user-name" title="{{ $headerName }}">{{ $headerName }}</span> <i data-feather="chevron-down"
                                         class="svg-icon"></i></span>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
                                 <a class="dropdown-item" href="{{ route('user.profile') }}"><i data-feather="user"
                                         class="svg-icon me-2 ms-1"></i>
-                                    My Profile</a>
+                                    Profil saya</a>
                                 <!--<a class="dropdown-item" href="javascript:void(0)"><i data-feather="settings"-->
                                 <!--        class="svg-icon me-2 ms-1"></i>-->
                                 <!--    Account Setting</a>-->
@@ -402,7 +423,7 @@
                                     @csrf
                                     <a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i data-feather="power"
                                             class="svg-icon me-2 ms-1"></i>
-                                        Logout</a>
+                                        Keluar</a>
                                 </form>
                             </div>
                         </li>
@@ -422,7 +443,7 @@
         <div class="page-wrapper">
             @yield('inti')
             <footer class="footer text-center text-muted">
-                All Rights Reserved 2025. Designed and Developed by <a href="https://sugenghartono.ac.id/">Universitas
+                Hak cipta 2025. <a href="https://sugenghartono.ac.id/">Universitas
                     Sugeng Hartono</a>.
             </footer>
         </div>
@@ -503,6 +524,9 @@
     <script>
     document.addEventListener("DOMContentLoaded", function() {
         const languageSelect = document.getElementById("languageSelect");
+        if (!languageSelect) {
+            return;
+        }
 
         // Fungsi untuk mengubah bahasa menggunakan Google Translate
         function translatePage(language) {
@@ -544,11 +568,6 @@
             const dataText = form.getAttribute('data-text');
 
             let message = 'Data yang dihapus tidak dapat dikembalikan.';
-            let title = 'Konfirmasi Hapus Data';
-
-            if (dataTitle) {
-                title = dataTitle;
-            }
             if (dataText) {
                 message = dataText;
             } else if (onsubmitAttr) {
@@ -557,6 +576,11 @@
                     message = match[1];
                 }
             }
+
+            const methodInput = form.querySelector('input[name="_method"]');
+            const method = (methodInput ? methodInput.value : 'POST').toUpperCase();
+            const isDelete = method === 'DELETE' || /hapus/.test(message.toLowerCase());
+            const title = dataTitle || (isDelete ? 'Hapus data?' : 'Konfirmasi');
 
             // Remove native inline onsubmit so browser native popup never fires
             form.removeAttribute('onsubmit');
@@ -567,11 +591,11 @@
                 Swal.fire({
                     title: title,
                     text: message,
-                    icon: 'warning',
+                    icon: isDelete ? 'warning' : 'question',
                     showCancelButton: true,
-                    confirmButtonColor: '#dc2626',
+                    confirmButtonColor: isDelete ? '#dc2626' : '#2563eb',
                     cancelButtonColor: '#64748b',
-                    confirmButtonText: '<i class="fas fa-trash me-1"></i> Ya, Hapus',
+                    confirmButtonText: isDelete ? '<i class="fas fa-trash me-1"></i> Ya, Hapus' : 'Ya, Lanjutkan',
                     cancelButtonText: 'Batal',
                     reverseButtons: true,
                     focusCancel: true
@@ -663,111 +687,30 @@
                 submenu.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
                 arrow.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
                 arrow.classList.remove('active');
-                extendPageToSidebar();
             }, true);
         }
 
-        function extendPageToSidebar() {
-            const sidebar = document.querySelector('.left-sidebar');
-            const wrapper = document.querySelector('#main-wrapper');
-            if (!sidebar || !wrapper) {
-                return;
-            }
-            const needed = sidebar.offsetTop + sidebar.offsetHeight;
-            if (wrapper.offsetHeight < needed) {
-                wrapper.style.minHeight = needed + 'px';
-            }
-        }
-
-        if (window.jQuery && jQuery.fn.perfectScrollbar) {
+        const sidebarScroller = document.querySelector('.scroll-sidebar');
+        if (window.jQuery && jQuery.fn.perfectScrollbar && sidebarScroller) {
             try {
-                jQuery('.scroll-sidebar').perfectScrollbar('destroy');
+                jQuery(sidebarScroller).perfectScrollbar('destroy');
             } catch (error) {}
-        }
-        extendPageToSidebar();
-
-        const SCROLL_KEY = 'silabo-window-scroll';
-        if ('scrollRestoration' in history) {
-            history.scrollRestoration = 'manual';
-        }
-
-        function currentScroll() {
-            return window.scrollY || document.documentElement.scrollTop || 0;
-        }
-
-        function saveScrollPosition() {
-            try {
-                const y = currentScroll();
-                if (y === 0) {
-                    const existing = parseInt(sessionStorage.getItem(SCROLL_KEY) || '0', 10);
-                    const active = document.querySelector('#sidebarnav a.sidebar-link.active');
-                    if (existing > 0 && active && active.getBoundingClientRect().top > window.innerHeight) {
-                        return;
-                    }
-                }
-                sessionStorage.setItem(SCROLL_KEY, String(y));
-            } catch (error) {}
-        }
-
-        function restoreScrollPosition() {
-            try {
-                const saved = sessionStorage.getItem(SCROLL_KEY);
-                if (saved === null) {
-                    return;
-                }
-                const y = parseInt(saved, 10);
-                if (!Number.isNaN(y) && y > 0) {
-                    window.scrollTo({ top: y, left: 0, behavior: 'auto' });
-                }
-            } catch (error) {}
+            sidebarScroller.style.height = '';
+            sidebarScroller.style.overflow = '';
         }
 
         function scrollActiveIntoView(link) {
-            if (!link || link.offsetHeight < 1) {
+            if (!sidebarScroller || !link || link.offsetHeight < 1) {
                 return;
             }
-            const topLimit = 88;
-            const bottomLimit = window.innerHeight - 16;
-            const rect = link.getBoundingClientRect();
-            if (rect.top >= topLimit && rect.bottom <= bottomLimit) {
+            const linkRect = link.getBoundingClientRect();
+            const scrollerRect = sidebarScroller.getBoundingClientRect();
+            const padding = 12;
+            if (linkRect.top >= scrollerRect.top + padding && linkRect.bottom <= scrollerRect.bottom - padding) {
                 return;
             }
-            const target = Math.max(0, currentScroll() + rect.top - topLimit);
-            const root = document.scrollingElement || document.documentElement;
-            root.scrollTop = target;
-            window.scrollTo({ top: target, left: 0, behavior: 'auto' });
-            if (Math.abs(currentScroll() - target) > 2) {
-                link.scrollIntoView({ block: 'start', inline: 'nearest' });
-                window.scrollBy(0, -topLimit);
-            }
+            sidebarScroller.scrollTop += linkRect.top - scrollerRect.top - padding;
         }
-
-        let allowScrollSave = false;
-        let scrollSaveQueued = false;
-        window.addEventListener('scroll', function () {
-            if (!allowScrollSave || scrollSaveQueued) {
-                return;
-            }
-            scrollSaveQueued = true;
-            requestAnimationFrame(function () {
-                scrollSaveQueued = false;
-                saveScrollPosition();
-            });
-        }, { passive: true });
-        window.addEventListener('pagehide', function () {
-            allowScrollSave = true;
-            saveScrollPosition();
-        });
-        document.querySelectorAll('#sidebarnav a.sidebar-link').forEach(function (link) {
-            link.addEventListener('click', function () {
-                const href = link.getAttribute('href') || '';
-                if (!href || href === '#' || href.indexOf('javascript:') === 0) {
-                    return;
-                }
-                allowScrollSave = true;
-                saveScrollPosition();
-            });
-        });
 
         (function keepSidebarOnCurrentMenu() {
             const current = (location.pathname || '/').replace(/\/+$/, '') || '/';
@@ -795,11 +738,6 @@
             });
 
             if (!match) {
-                restoreScrollPosition();
-                setTimeout(function () {
-                    allowScrollSave = true;
-                    saveScrollPosition();
-                }, 60);
                 return;
             }
 
@@ -826,19 +764,23 @@
                 }
             }
 
-            function placeSidebarScroll() {
-                extendPageToSidebar();
-                restoreScrollPosition();
-                scrollActiveIntoView(match);
+            function clearParentArrow() {
+                document.querySelectorAll('#sidebarnav a.has-arrow').forEach(function (arrow) {
+                    arrow.classList.remove('active');
+                    const parentItem = arrow.closest('.sidebar-item');
+                    if (parentItem) {
+                        parentItem.classList.remove('active', 'selected');
+                    }
+                });
             }
 
-            placeSidebarScroll();
-            window.addEventListener('load', placeSidebarScroll);
-            setTimeout(function () {
-                placeSidebarScroll();
-                allowScrollSave = true;
-                saveScrollPosition();
-            }, 60);
+            clearParentArrow();
+            scrollActiveIntoView(match);
+            window.addEventListener('load', function () {
+                clearParentArrow();
+                scrollActiveIntoView(match);
+            });
+            setTimeout(clearParentArrow, 30);
         })();
     });
     </script>

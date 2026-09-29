@@ -343,7 +343,7 @@
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title" id="importJadwalModalLabel">Import jadwal</h5>
-                    <p class="modal-kicker">Setiap baris membuat 8 jadwal mingguan.</p>
+                    <p class="modal-kicker">Isi nama laboratorium, program studi, dan mata kuliah. Setiap baris baru membuat 8 jadwal mingguan. Jadwal yang sudah ada dilewati.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
