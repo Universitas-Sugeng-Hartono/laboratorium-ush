@@ -223,7 +223,11 @@
                 <div class="text-center py-5 text-muted">
                     <i class="fa fa-calendar-xmark fs-1 mb-3 d-block opacity-50 text-secondary"></i>
                     <h5 class="fw-bold text-dark">Tidak Ada Jadwal Praktikum</h5>
+                    @if(!empty($peringatanTa))
+                    <p class="font-14 mb-0">{{ $peringatanTa }}</p>
+                    @else
                     <p class="font-14 mb-0">Tidak ada jadwal praktikum yang terdaftar pada tanggal {{ \Carbon\Carbon::parse($tanggal)->isoFormat('D MMMM Y') }}.</p>
+                    @endif
                 </div>
             @else
                 <div class="table-responsive">

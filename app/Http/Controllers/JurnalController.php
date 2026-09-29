@@ -76,22 +76,21 @@ class JurnalController extends Controller
         $labs = Laboratorium::orderBy('laboratorium', 'asc')->get();
         $programs = Program::orderBy('program', 'asc')->get();
 
+        $peringatanTa = Ta::pesanJikaTidakAktif();
         $jadwals = Jadwal::with(['matkulId', 'labId', 'programId'])
-            ->when($selectedTaId, function($q) use ($selectedTaId) {
-                $q->whereHas('matkulId', function($mq) use ($selectedTaId) {
-                    $mq->where('ta_id', $selectedTaId);
-                });
-            })
+            ->padaTaAktif()
             ->orderBy('jadwal', 'desc')
             ->take(150)
             ->get();
 
         $selectedJadwal = null;
         if ($request->filled('jadwal_id')) {
-            $selectedJadwal = Jadwal::with(['matkulId', 'labId', 'programId'])->find($request->jadwal_id);
+            $selectedJadwal = Jadwal::with(['matkulId', 'labId', 'programId'])
+                ->padaTaAktif()
+                ->find($request->jadwal_id);
         }
 
-        return view('jurnal.create', compact('matkuls', 'labs', 'programs', 'jadwals', 'selectedJadwal', 'taAktif'));
+        return view('jurnal.create', compact('matkuls', 'labs', 'programs', 'jadwals', 'selectedJadwal', 'taAktif', 'peringatanTa'));
     }
 
     public function store(Request $request)
@@ -111,6 +110,10 @@ class JurnalController extends Controller
         ]);
 
         $jadwalId = $request->jadwal_id;
+        if ($jadwalId && !Jadwal::padaTaAktif()->where('id', $jadwalId)->exists()) {
+            $pesan = Ta::pesanJikaTidakAktif() ?? 'Jadwal yang dipilih bukan bagian dari tahun akademik aktif.';
+            return redirect()->back()->withInput()->withErrors(['jadwal_id' => $pesan]);
+        }
         if (!$jadwalId) {
             $jadwal = Jadwal::create([
                 'matakuliah_id' => $request->matakuliah_id,
@@ -173,7 +176,13 @@ class JurnalController extends Controller
     public function edit($id)
     {
         $jurnal = Jurnal::findOrFail($id);
-        $jadwals = Jadwal::all();
+        $jadwals = Jadwal::padaTaAktif()->orderBy('jadwal', 'desc')->get();
+        if ($jurnal->jadwal_id && !$jadwals->contains('id', $jurnal->jadwal_id)) {
+            $current = Jadwal::find($jurnal->jadwal_id);
+            if ($current) {
+                $jadwals->prepend($current);
+            }
+        }
         $programs = Program::all();
         $matkuls = Matkul::all();
         $lab = Laboratorium::all();

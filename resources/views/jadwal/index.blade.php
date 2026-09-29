@@ -199,6 +199,11 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     @endif
+    @if(!empty($peringatanTa))
+    <div class="alert alert-warning border-0 shadow-sm" style="border-radius: 10px;" role="alert">
+        <i class="fas fa-exclamation-triangle me-1"></i> {{ $peringatanTa }}
+    </div>
+    @endif
     @if(session('import_errors'))
     <div class="alert alert-warning alert-dismissible fade show border-0 shadow-sm" style="border-radius: 10px;" role="alert">
         <strong>Detail baris gagal:</strong>

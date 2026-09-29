@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Jadwal;
+use App\Models\Ta;
 use App\Services\WahaClient;
 use Carbon\Carbon;
 
@@ -18,7 +19,13 @@ class AutoKirimWA extends Command
 
         $this->info("[{$now}] Memulai auto kirim WA...");
 
+        if ($pesanTa = Ta::pesanJikaTidakAktif()) {
+            $this->info($pesanTa);
+            return 0;
+        }
+
         $jadwals = Jadwal::with(['matkulId', 'labId'])
+            ->padaTaAktif()
             ->whereDate('jadwal', $now->toDateString())
             ->whereNull('wa_sent_at')
             ->get();

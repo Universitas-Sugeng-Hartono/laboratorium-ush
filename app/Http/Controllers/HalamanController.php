@@ -12,6 +12,7 @@ use App\Models\Alat;
 use App\Models\Program;
 use App\Models\Laboratorium;
 use App\Models\Pemakaian;
+use App\Models\Ta;
 use App\Services\WahaClient;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -35,7 +36,9 @@ class HalamanController extends Controller
             : Carbon::today();
 
         $hariIni = $tanggal->locale('id')->isoFormat('dddd');
+        $peringatanTa = Ta::pesanJikaTidakAktif();
         $jadwalHariIni = Jadwal::with(['matkulId', 'labId', 'programId'])
+            ->padaTaAktif()
             ->whereDate('jadwal', $tanggal)
             ->orderBy('jadwal', 'asc')
             ->get();
@@ -45,7 +48,7 @@ class HalamanController extends Controller
             ->keyBy('jadwal_id');
 
         $scheduledTimes = $jadwalHariIni->map(fn($jadwal) => Carbon::parse($jadwal->jadwal)->format('H:i'))->toArray();
-        return view('welcome', compact('jadwalHariIni', 'hariIni', 'jurnal', 'scheduledTimes', 'tanggal'));
+        return view('welcome', compact('jadwalHariIni', 'hariIni', 'jurnal', 'scheduledTimes', 'tanggal', 'peringatanTa'));
     }
 
 
@@ -57,7 +60,8 @@ class HalamanController extends Controller
         $month = $dates->month;
         $startOfMonth = Carbon::createFromDate($year, $month, 1);
         $daysInMonth = $startOfMonth->daysInMonth;
-        $jadwal = Jadwal::whereMonth('jadwal', $month)
+        $jadwal = Jadwal::padaTaAktif()
+            ->whereMonth('jadwal', $month)
             ->whereYear('jadwal', $year)
             ->get();
         return view('tamu', compact('lab', 'dates', 'jadwal', 'year', 'month', 'startOfMonth', 'daysInMonth'));
@@ -65,7 +69,10 @@ class HalamanController extends Controller
 
     public function sessionJurnal(Request $request, $id)
     {
-        $jadwal = Jadwal::findOrFail($id);
+        $jadwal = Jadwal::padaTaAktif()->find($id);
+        if (!$jadwal) {
+            return redirect()->route('jadwallab')->with('error', Ta::pesanJikaTidakAktif() ?? 'Jadwal ini bukan bagian dari tahun akademik aktif.');
+        }
         $programs = Program::select('id', 'program')->get();
         $matkul = Matkul::select('id', 'matakuliah')->get();
         $lab = Laboratorium::select('id', 'laboratorium')->get();
@@ -74,7 +81,10 @@ class HalamanController extends Controller
 
     public function sessionLihatJurnal(Request $request, $id)
     {
-        $jadwal = Jadwal::findOrFail($id);
+        $jadwal = Jadwal::padaTaAktif()->find($id);
+        if (!$jadwal) {
+            return redirect()->route('jadwallab')->with('error', Ta::pesanJikaTidakAktif() ?? 'Jadwal ini bukan bagian dari tahun akademik aktif.');
+        }
         $jurnals = Jurnal::where('jadwal_id', $id)->get();
         return view('lihatjurnal', compact('jadwal', 'jurnals'));
     }
@@ -393,7 +403,10 @@ class HalamanController extends Controller
 
     public function KirimWA(Request $request, $id)
     {
-        $jadwal = Jadwal::findOrFail($id);
+        $jadwal = Jadwal::with(['matkulId', 'labId'])->findOrFail($id);
+        if (!Jadwal::padaTaAktif()->where('id', $jadwal->id)->exists()) {
+            return redirect()->back()->with('error', Ta::pesanJikaTidakAktif() ?? 'Pengingat hanya dikirim untuk jadwal tahun akademik aktif.');
+        }
         $result = $this->sendJadwalReminder($jadwal);
 
         if (!$result['ok']) {
@@ -415,8 +428,13 @@ class HalamanController extends Controller
 
         date_default_timezone_set('Asia/Jakarta');
 
+        if ($pesanTa = Ta::pesanJikaTidakAktif()) {
+            return $pesanTa;
+        }
+
         $now = Carbon::now('Asia/Jakarta');
         $jadwals = Jadwal::with(['matkulId', 'labId'])
+            ->padaTaAktif()
             ->whereDate('jadwal', $now->toDateString())
             ->whereNull('wa_sent_at')
             ->get();
@@ -501,8 +519,23 @@ class HalamanController extends Controller
             $labelTanggal = Carbon::today()->format('Y-m-d');
         }
 
+        if ($pesanTa = Ta::pesanJikaTidakAktif()) {
+            return response()->json([
+                'message' => $pesanTa,
+                'tanggal' => $labelTanggal,
+                'waktu_cek' => $nowTime->format('H:i:s'),
+                'total_jadwal' => 0,
+                'belum_jurnal' => 0,
+                'terkirim' => 0,
+                'gagal' => 0,
+                'sudah_jurnal' => 0,
+                'belum_waktunya' => 0,
+                'detail' => [],
+            ]);
+        }
+
         // Query jadwal berdasarkan tanggal
-        $query = Jadwal::with(['matkulId', 'labId']);
+        $query = Jadwal::with(['matkulId', 'labId'])->padaTaAktif();
 
         if (count($dates) === 1) {
             $query->whereDate('jadwal', $dates[0]);

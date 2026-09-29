@@ -29,13 +29,12 @@ class JadwalController extends Controller
             $query->whereDate('jadwal', $request->jadwal);
         }
     
-        $query->whereHas('matkulId.taId', function ($q) {
-            $q->where('status', 'aktif');
-        });
+        $query->padaTaAktif();
+        $peringatanTa = Ta::pesanJikaTidakAktif();
     
         $perPage = in_array((int)$request->get('per_page'), [10, 25, 50, 100]) ? (int)$request->get('per_page') : 25;
         $jadwals = $query->orderBy('jadwal', 'desc')->paginate($perPage)->appends($request->query());
-        return view('jadwal.index', compact('jadwals', 'labs', 'programs'));
+        return view('jadwal.index', compact('jadwals', 'labs', 'programs', 'peringatanTa'));
     }
 
     public function create()
@@ -126,7 +125,7 @@ class JadwalController extends Controller
         try {
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($uploadedFile->getRealPath());
             $sheet = $spreadsheet->getActiveSheet();
-            $rows = $sheet->toArray(null, true, true, false);
+            $rows = $sheet->toArray(null, true, false, false);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal membaca berkas. Gunakan template Excel atau CSV.');
         }
@@ -168,8 +167,15 @@ class JadwalController extends Controller
                 $data[$key] = trim((string) $val);
             }
 
+            $label = trim((string) ($data['matakuliah'] ?? ''));
+            if ($label === '') {
+                $label = 'tanpa nama mata kuliah';
+            }
+
             try {
-                $result = $this->importCsvRow($data);
+                $result = \Illuminate\Support\Facades\DB::transaction(function () use ($data) {
+                    return $this->importCsvRow($data);
+                });
                 if ($result === 'skipped') {
                     $skippedRows++;
                 } else {
@@ -177,8 +183,17 @@ class JadwalController extends Controller
                     $createdCount += 8;
                 }
             } catch (\InvalidArgumentException $e) {
-                $label = $data['matakuliah'] ?? ($data['matakuliah_id'] ?? "baris {$rowNumber}");
                 $errors[] = "Baris {$rowNumber} ({$label}): {$e->getMessage()}";
+            } catch (\Illuminate\Database\QueryException | \PDOException $e) {
+                report($e);
+                $errors[] = "Baris {$rowNumber} ({$label}): jadwal pada baris ini tidak dapat disimpan.";
+            } catch (\Throwable $e) {
+                report($e);
+                $safe = $e->getMessage();
+                if (stripos($safe, 'SQLSTATE') !== false || stripos($safe, 'SQL:') !== false) {
+                    $safe = 'jadwal pada baris ini tidak dapat disimpan.';
+                }
+                $errors[] = "Baris {$rowNumber} ({$label}): {$safe}";
             }
         }
 
@@ -200,8 +215,9 @@ class JadwalController extends Controller
     public function JadwalLab()
     {
         $hariIni = Carbon::now()->locale('id')->isoFormat('dddd');
-        $jadwalHariIni = Jadwal::whereDate('jadwal', Carbon::today())->get();
-        return view('jadwal-laboratorium', compact('jadwalHariIni', 'hariIni'));
+        $jadwalHariIni = Jadwal::padaTaAktif()->whereDate('jadwal', Carbon::today())->get();
+        $peringatanTa = Ta::pesanJikaTidakAktif();
+        return view('jadwal-laboratorium', compact('jadwalHariIni', 'hariIni', 'peringatanTa'));
     }
 
     public function show(Jadwal $jadwal)
@@ -301,26 +317,19 @@ class JadwalController extends Controller
             'Program studi'
         );
         $tanggal = $data['tanggal'] ?? '';
-        $jam = $data['jam'] ?? '';
-        $jamSelesai = trim((string) ($data['jam_selesai'] ?? ''));
+        $jam = $this->normalizeExcelTime($data['jam'] ?? '', 'jam');
+        $jamSelesai = $this->normalizeExcelTime($data['jam_selesai'] ?? '', 'jam selesai');
         $semester = $this->parseSemester($data['semester'] ?? '');
         $kelas = $this->parseKelas($data['kelas'] ?? '');
 
-        // Convert Excel serial date numbers if applicable
-        if (is_numeric($tanggal) && $tanggal > 30000 && $tanggal < 60000) {
+        if (is_numeric($tanggal)) {
             $tanggal = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($tanggal)->format('Y-m-d');
-        }
-        if (is_numeric($jam) && $jam < 1) {
-            $jam = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($jam)->format('H:i');
-        }
-        if ($jamSelesai && is_numeric($jamSelesai) && $jamSelesai < 1) {
-            $jamSelesai = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($jamSelesai)->format('H:i');
         }
 
         if ($tanggal === '') {
             throw new \InvalidArgumentException('tanggal wajib diisi');
         }
-        if ($jam === '') {
+        if ($jam === null || $jam === '') {
             throw new \InvalidArgumentException('jam wajib diisi');
         }
 
@@ -429,6 +438,35 @@ class JadwalController extends Controller
             }
         }
         return true;
+    }
+
+    private function normalizeExcelTime(string $value, string $field): ?string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            $serial = (float) $value;
+            if ($serial < 0) {
+                throw new \InvalidArgumentException("{$field} tidak valid");
+            }
+
+            return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($serial)->format('H:i');
+        }
+
+        if (preg_match('/(\d{1,2}):(\d{2})/', $value, $matches)) {
+            $hour = (int) $matches[1];
+            $minute = (int) $matches[2];
+            if ($hour > 23 || $minute > 59) {
+                throw new \InvalidArgumentException("{$field} tidak valid");
+            }
+
+            return sprintf('%02d:%02d', $hour, $minute);
+        }
+
+        throw new \InvalidArgumentException("{$field} tidak valid");
     }
 
     private function parseSemester(string $value): int

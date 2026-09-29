@@ -58,6 +58,9 @@
                                 <i class="fa fa-link text-primary me-1"></i> Hubungkan dengan Jadwal Praktikum (Opsional)
                             </label>
                             <p class="text-muted font-11 mb-2">Pilih jadwal yang sudah ada untuk mengisi Mata Kuliah, Laboratorium, Prodi, Tanggal, dan Jam secara otomatis.</p>
+                            @if(!empty($peringatanTa))
+                            <p class="text-warning font-12 mb-2"><i class="fa fa-exclamation-triangle me-1"></i>{{ $peringatanTa }}</p>
+                            @endif
                             <select name="jadwal_id" id="jadwal_select" class="form-select font-13">
                                 <option value="">-- Input Manual (Bukan dari Jadwal Terjadwal) --</option>
                                 @foreach($jadwals as $j)

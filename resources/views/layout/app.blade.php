@@ -350,6 +350,9 @@
                     </span>
                 </h4>
                 <small class="text-muted">Total {{ $jadwal->count() }} sesi praktikum terdaftar pada bulan ini</small>
+                @if(!empty($peringatanTa))
+                <div class="small text-warning mt-1"><i class="fa fa-exclamation-triangle me-1"></i>{{ $peringatanTa }}</div>
+                @endif
             </div>
             <div class="d-flex align-items-center gap-2">
                 <a href="{{ route('layout.app', ['month' => $prevDate->month, 'year' => $prevDate->year]) }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Bulan Sebelumnya">

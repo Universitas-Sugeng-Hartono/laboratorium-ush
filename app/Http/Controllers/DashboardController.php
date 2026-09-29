@@ -61,7 +61,9 @@ class DashboardController extends Controller
         $taAktif = Ta::where('status', 'aktif')->first();
 
         // Eager load schedules for the selected month to avoid N+1 queries
+        $peringatanTa = Ta::pesanJikaTidakAktif();
         $jadwal = Jadwal::with(['matkulId', 'labId', 'programId'])
+            ->padaTaAktif()
             ->whereMonth('jadwal', $month)
             ->whereYear('jadwal', $year)
             ->orderBy('jadwal', 'asc')
@@ -74,6 +76,7 @@ class DashboardController extends Controller
 
         // Schedules for today
         $jadwalHariIni = Jadwal::with(['matkulId', 'labId', 'programId'])
+            ->padaTaAktif()
             ->whereDate('jadwal', $today)
             ->orderBy('jadwal', 'asc')
             ->get();
@@ -98,6 +101,7 @@ class DashboardController extends Controller
             'totalBahan',
             'totalLab',
             'taAktif',
+            'peringatanTa',
             'jadwal',
             'jadwalByDate',
             'jadwalHariIni',

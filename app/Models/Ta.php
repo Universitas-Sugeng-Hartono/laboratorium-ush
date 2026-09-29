@@ -21,4 +21,13 @@ class Ta extends Model
     {
         return $query->where('status', 'aktif');
     }
+
+    public static function pesanJikaTidakAktif(): ?string
+    {
+        if (static::where('status', 'aktif')->exists()) {
+            return null;
+        }
+
+        return 'Tahun akademik aktif belum diatur.';
+    }
 }
