@@ -56,13 +56,19 @@ class AutoKirimWA extends Command
                 continue;
             }
 
+            $waktu = Carbon::parse($jadwal->jadwal)->locale('id');
+            $selesai = $jadwal->jam_selesai
+                ? Carbon::parse($jadwal->jam_selesai)->format('H.i')
+                : $waktu->copy()->addMinutes(170)->format('H.i');
             $text =
                 "Yth. Bapak/Ibu {$dosen}.\n" .
-                "Jadwal {$lab} - {$jadwal->jadwal}.\n" .
-                "Mata Kuliah {$matkul}\n" .
-                "Dimohon untuk mengisi E-Journal Laboratorium sebelum meninggalkan ruangan {$lab}\n" .
-                "https://laboratorium.sugenghartono.ac.id/jadwallab\n" .
-                "Terima Kasih Banyak";
+                "Pengingat jadwal praktikum.\n" .
+                "Mata kuliah: {$matkul}\n" .
+                "Laboratorium: {$lab}\n" .
+                "Tanggal: {$waktu->isoFormat('D MMMM Y')}\n" .
+                "Jam: {$waktu->format('H.i')} - {$selesai}\n" .
+                "https://silabo.ush.ac.id/jadwallab\n" .
+                "Terima kasih.";
 
             $result = $fonnte->send($nomor, $text);
             if (!$result['ok']) {

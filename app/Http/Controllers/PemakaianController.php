@@ -222,13 +222,15 @@ class PemakaianController extends Controller
     public function KirimWA(Request $request, $id)
     {
         $pemakaian = Pemakaian::findOrFail($id);
-        $text = <<<STR
-Peminjaman atas nama {$pemakaian->nama}
-Dengan keperluan peminjaman digunakan untuk {$pemakaian->keperluan}
-Sudah melewati batas pengembalian pada tanggal {$pemakaian->tgl_pengembalian}
-Harap segera mengembalikan peminjaman alat atau bahan digunakan.
-Terima kasih banyak
-STR;
+        $batas = $pemakaian->tgl_pengembalian
+            ? \Carbon\Carbon::parse($pemakaian->tgl_pengembalian)->locale('id')->isoFormat('D MMMM Y')
+            : '-';
+        $text =
+            "Peminjaman atas nama {$pemakaian->nama}\n" .
+            "Keperluan: {$pemakaian->keperluan}\n" .
+            "Batas pengembalian: {$batas}\n" .
+            "Harap segera mengembalikan peminjaman alat atau bahan digunakan.\n" .
+            "Terima kasih banyak";
 
         $result = app(FonnteClient::class)->send((string) $pemakaian->nomor, $text);
         if (!$result['ok']) {

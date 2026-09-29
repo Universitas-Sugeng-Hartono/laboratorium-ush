@@ -600,19 +600,21 @@ class HalamanController extends Controller
                 continue;
             }
 
-            // Link dengan parameter tanggal
-            $linkJadwal = "https://laboratorium.sugenghartono.ac.id/jadwallab?tanggal={$jadwalDate}";
+            $linkJadwal = "https://silabo.ush.ac.id/jadwallab?tanggal={$jadwalDate}";
+            $selesai = $jadwal->jam_selesai
+                ? Carbon::parse($jadwal->jam_selesai)->format('H.i')
+                : $jadwalTime->copy()->addMinutes(170)->format('H.i');
+            $tanggalTeks = $jadwalTime->copy()->locale('id')->isoFormat('D MMMM Y');
 
             $stringPesanan =
                 "Yth. Bapak/Ibu {$dosen}.\n" .
-                "Ini adalah pengingat bahwa jurnal perkuliahan untuk:\n" .
-                "Mata Kuliah: {$matakuliah}\n" .
+                "Pengingat jurnal belum diisi.\n" .
+                "Mata kuliah: {$matakuliah}\n" .
                 "Laboratorium: {$lab}\n" .
-                "Jadwal: {$jadwal->jadwal}\n" .
-                "belum diisi.\n\n" .
-                "Dimohon untuk segera mengisi E-Journal Laboratorium melalui:\n" .
-                "{$linkJadwal}\n\n" .
-                "Terima kasih atas perhatiannya.";
+                "Tanggal: {$tanggalTeks}\n" .
+                "Jam: {$jadwalTime->format('H.i')} - {$selesai}\n" .
+                "{$linkJadwal}\n" .
+                "Terima kasih.";
 
             $result = app(FonnteClient::class)->send($destination, $stringPesanan);
 
@@ -694,13 +696,19 @@ class HalamanController extends Controller
         $dosen = optional($jadwal->matkulId)->dosen ?? 'Bapak/Ibu';
         $matkul = optional($jadwal->matkulId)->matakuliah ?? '-';
         $lab = optional($jadwal->labId)->laboratorium ?? '-';
+        $waktu = Carbon::parse($jadwal->jadwal)->locale('id');
+        $selesai = $jadwal->jam_selesai
+            ? Carbon::parse($jadwal->jam_selesai)->format('H.i')
+            : $waktu->copy()->addMinutes(170)->format('H.i');
         $text =
             "Yth. Bapak/Ibu {$dosen}.\n" .
-            "Jadwal {$lab} - {$jadwal->jadwal}.\n" .
-            "Mata Kuliah {$matkul}\n" .
-            "Dimohon untuk mengisi E-Journal Laboratorium sebelum meninggalkan ruangan {$lab}\n" .
-            "https://laboratorium.sugenghartono.ac.id/jadwallab\n" .
-            "Terima Kasih Banyak";
+            "Pengingat jadwal praktikum.\n" .
+            "Mata kuliah: {$matkul}\n" .
+            "Laboratorium: {$lab}\n" .
+            "Tanggal: {$waktu->isoFormat('D MMMM Y')}\n" .
+            "Jam: {$waktu->format('H.i')} - {$selesai}\n" .
+            "https://silabo.ush.ac.id/jadwallab\n" .
+            "Terima kasih.";
 
         return app(FonnteClient::class)->send($nomor, $text);
     }
