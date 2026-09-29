@@ -26,8 +26,8 @@ class Alat extends Model
     public function getKondisiBadgeAttribute()
     {
         return match ($this->kondisi) {
+            'rusak', 'rusak_berat' => 'bg-danger text-white',
             'rusak_ringan' => 'bg-warning text-dark',
-            'rusak_berat' => 'bg-danger text-white',
             default => 'bg-success text-white',
         };
     }
@@ -41,14 +41,45 @@ class Alat extends Model
         };
     }
 
+    public function getKondisiLabelAttribute(): string
+    {
+        return match ($this->kondisi) {
+            'rusak' => 'Rusak',
+            'rusak_ringan' => 'Rusak ringan',
+            'rusak_berat' => 'Rusak berat',
+            default => 'Baik',
+        };
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'dipinjam' => 'Dipinjam',
+            'maintenance' => 'Dalam perbaikan',
+            default => 'Tersedia',
+        };
+    }
+
     public function getQrCodePayloadAttribute()
     {
-        return json_encode([
-            'kode' => $this->kode,
-            'alat' => $this->alat,
-            'lab' => $this->labId->laboratorium ?? '-',
-            'url' => url('/alat/' . $this->id . '/edit'),
-        ], JSON_UNESCAPED_SLASHES);
+        return route('alat.kartu', $this->id);
+    }
+
+    public function riwayat()
+    {
+        return $this->hasMany(AlatRiwayat::class, 'alat_id')->orderByDesc('tanggal')->orderByDesc('id');
+    }
+
+    public function terapkanJenisRiwayat(string $jenis): void
+    {
+        if ($jenis === 'rusak') {
+            $this->kondisi = 'rusak';
+        } elseif ($jenis === 'dalam_perbaikan') {
+            $this->status = 'maintenance';
+        } elseif ($jenis === 'layak_pakai') {
+            $this->kondisi = 'baik';
+            $this->status = 'tersedia';
+        }
     }
 
     public function labId()

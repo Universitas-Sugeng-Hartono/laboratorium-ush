@@ -74,12 +74,19 @@
 
         /* SILABO Theme: Active Sidebar Item in Brand Primary Blue (#2563eb) */
         .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link,
+        .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link:hover,
         .sidebar-nav #sidebarnav .sidebar-item.active > .sidebar-link,
+        .sidebar-nav #sidebarnav .sidebar-item.active > .sidebar-link:hover,
         .sidebar-nav #sidebarnav .sidebar-item > .sidebar-link.active,
+        .sidebar-nav #sidebarnav .sidebar-item > .sidebar-link.active:hover,
         .sidebar-nav #sidebarnav .sidebar-link.active,
+        .sidebar-nav #sidebarnav .sidebar-link.active:hover,
         .sidebar-nav ul .sidebar-item.selected > .sidebar-link,
+        .sidebar-nav ul .sidebar-item.selected > .sidebar-link:hover,
         .sidebar-nav ul .sidebar-item.active > .sidebar-link,
-        .sidebar-nav ul .sidebar-item > .sidebar-link.active {
+        .sidebar-nav ul .sidebar-item.active > .sidebar-link:hover,
+        .sidebar-nav ul .sidebar-item > .sidebar-link.active,
+        .sidebar-nav ul .sidebar-item > .sidebar-link.active:hover {
             background: #2563eb !important;
             background-color: #2563eb !important;
             color: #ffffff !important;
@@ -87,14 +94,24 @@
             opacity: 1 !important;
         }
         .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link i,
+        .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link:hover i,
         .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link .feather-icon,
+        .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link:hover .feather-icon,
         .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link span,
+        .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link:hover span,
         .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link .hide-menu,
+        .sidebar-nav #sidebarnav .sidebar-item.selected > .sidebar-link:hover .hide-menu,
         .sidebar-nav #sidebarnav .sidebar-item.active > .sidebar-link i,
+        .sidebar-nav #sidebarnav .sidebar-item.active > .sidebar-link:hover i,
         .sidebar-nav #sidebarnav .sidebar-item.active > .sidebar-link span,
+        .sidebar-nav #sidebarnav .sidebar-item.active > .sidebar-link:hover span,
         .sidebar-nav ul .sidebar-item.selected > .sidebar-link i,
-        .sidebar-nav ul .sidebar-item.selected > .sidebar-link span {
+        .sidebar-nav ul .sidebar-item.selected > .sidebar-link:hover i,
+        .sidebar-nav ul .sidebar-item.selected > .sidebar-link span,
+        .sidebar-nav ul .sidebar-item.selected > .sidebar-link:hover span {
             color: #ffffff !important;
+            background: transparent !important;
+            background-color: transparent !important;
         }
         .sidebar-nav #sidebarnav a.has-arrow,
         .sidebar-nav #sidebarnav .sidebar-item.selected > a.has-arrow,
@@ -292,7 +309,9 @@
             line-height: 1.2;
         }
 
-        .sidebar-nav #sidebarnav .sidebar-item:not(.selected):not(.active) .sidebar-link:hover {
+        .sidebar-nav #sidebarnav .sidebar-item:not(.selected):not(.active) > .sidebar-link:not(.active):hover,
+        .sidebar-nav #sidebarnav .sidebar-item:not(.selected):not(.active) > .sidebar-link:not(.active):hover span {
+            background: #f1f5f9 !important;
             background-color: #f1f5f9 !important;
             color: #0f172a !important;
         }

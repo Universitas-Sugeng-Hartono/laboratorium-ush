@@ -286,6 +286,9 @@
                         </td>
                         <td>
                             <div class="dosen-text"><i class="fas fa-user-tie text-muted me-1"></i> {{ $mk->dosen }}</div>
+                            @if($mk->dosen2)
+                            <div class="dosen-text"><i class="fas fa-user-tie text-muted me-1"></i> {{ $mk->dosen2 }}</div>
+                            @endif
                         </td>
                         <td>
                             <span class="prodi-badge">{{ $mk->programId->program ?? '-' }}</span>
@@ -337,7 +340,7 @@
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title" id="importMatkulModalLabel">Import mata kuliah</h5>
-                    <p class="modal-kicker">Nama yang sama pada program studi dan tahun akademik yang sama diperbarui, tidak digandakan.</p>
+                    <p class="modal-kicker">Nama yang sama pada program studi dan tahun akademik yang sama diperbarui, tidak digandakan. Dosen kedua dan nomor WhatsApp kedua opsional.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>

@@ -20,7 +20,7 @@
             </a>
         </li>
         <li class="sidebar-item">
-            <a class="sidebar-link" href="{{ route('jurnal.index') }}" aria-expanded="false">
+            <a class="sidebar-link" href="{{ auth()->user()->can('manageMaster') ? route('jurnal.pemantauan') : route('jurnal.index') }}" aria-expanded="false">
                 <i data-feather="book-open" class="feather-icon"></i>
                 <span class="hide-menu">Jurnal Praktikum</span>
             </a>

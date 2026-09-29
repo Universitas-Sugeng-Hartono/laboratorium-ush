@@ -46,12 +46,11 @@ class AutoKirimWA extends Command
                 continue;
             }
 
-            $nomor = optional($jadwal->matkulId)->nomor;
-            $dosen = optional($jadwal->matkulId)->dosen ?? 'Bapak/Ibu';
             $matkul = optional($jadwal->matkulId)->matakuliah ?? '-';
             $lab = optional($jadwal->labId)->laboratorium ?? '-';
+            $penerima = optional($jadwal->matkulId)->penerimaWhatsapp() ?? [];
 
-            if (!$nomor) {
+            if ($penerima === []) {
                 $this->error("Nomor dosen kosong: {$matkul}");
                 continue;
             }
@@ -60,25 +59,35 @@ class AutoKirimWA extends Command
             $selesai = $jadwal->jam_selesai
                 ? Carbon::parse($jadwal->jam_selesai)->format('H.i')
                 : $waktu->copy()->addMinutes(170)->format('H.i');
-            $text =
-                "Yth. Bapak/Ibu {$dosen}.\n" .
-                "Pengingat jadwal praktikum.\n" .
-                "Mata kuliah: {$matkul}\n" .
-                "Laboratorium: {$lab}\n" .
-                "Tanggal: {$waktu->isoFormat('D MMMM Y')}\n" .
-                "Jam: {$waktu->format('H.i')} - {$selesai}\n" .
-                "https://silabo.ush.ac.id/jadwallab\n" .
-                "Terima kasih.";
+            $adaSukses = false;
 
-            $result = $fonnte->send($nomor, $text);
-            if (!$result['ok']) {
-                $this->error("Gagal kirim {$matkul}: {$result['error']}");
+            foreach ($penerima as $orang) {
+                $text =
+                    "Yth. Bapak/Ibu {$orang['dosen']}.\n" .
+                    "Pengingat jadwal praktikum.\n" .
+                    "Mata kuliah: {$matkul}\n" .
+                    "Laboratorium: {$lab}\n" .
+                    "Tanggal: {$waktu->isoFormat('D MMMM Y')}\n" .
+                    "Jam: {$waktu->format('H.i')} - {$selesai}\n" .
+                    "https://silabo.ush.ac.id/jadwallab\n" .
+                    "Terima kasih.";
+
+                $result = $fonnte->send($orang['nomor'], $text);
+                if (!$result['ok']) {
+                    $this->error("Gagal kirim {$matkul} ke {$orang['dosen']}: {$result['error']}");
+                    continue;
+                }
+
+                $adaSukses = true;
+                $this->info("Terkirim: {$matkul} - {$orang['dosen']}");
+            }
+
+            if (!$adaSukses) {
                 continue;
             }
 
             $jadwal->update(['wa_sent_at' => now()]);
             $sent++;
-            $this->info("Terkirim: {$matkul} - {$dosen}");
         }
 
         $this->info("Selesai. {$sent} pesan terkirim.");

@@ -63,6 +63,50 @@ class JurnalController extends Controller
         return view('jurnal.index', compact('jurnals', 'labs', 'programs', 'matkuls', 'peringatanTa'));
     }
 
+    public function pemantauan(Request $request)
+    {
+        $labs = Laboratorium::orderBy('laboratorium')->get();
+        $programs = Program::orderBy('program')->get();
+        $peringatanTa = Ta::pesanJikaTidakAktif();
+        $hariIni = Carbon::now('Asia/Jakarta')->toDateString();
+        $perPage = in_array((int) $request->get('per_page'), [10, 25, 50, 100]) ? (int) $request->get('per_page') : 25;
+
+        $query = Jadwal::with(['matkulId', 'labId', 'programId'])
+            ->withExists('jurnals as sudah_jurnal')
+            ->padaTaAktif()
+            ->whereDate('jadwal', '<=', $hariIni);
+
+        if ($request->filled('lab_id')) {
+            $query->where('lab_id', $request->lab_id);
+        }
+
+        if ($request->filled('program_id')) {
+            $query->where('program_id', $request->program_id);
+        }
+
+        if ($request->filled('tanggal_awal')) {
+            $query->whereDate('jadwal', '>=', $request->tanggal_awal);
+        }
+
+        if ($request->filled('tanggal_akhir')) {
+            $query->whereDate('jadwal', '<=', $request->tanggal_akhir);
+        }
+
+        if ($request->status === 'sudah') {
+            $query->whereHas('jurnals');
+        } elseif ($request->status === 'belum') {
+            $query->whereDoesntHave('jurnals');
+        }
+
+        $jadwals = $query
+            ->orderByRaw('(SELECT COUNT(*) FROM jurnal WHERE jurnal.jadwal_id = jadwal.id) ASC')
+            ->orderBy('jadwal', 'desc')
+            ->paginate($perPage)
+            ->appends($request->query());
+
+        return view('jurnal.pemantauan', compact('jadwals', 'labs', 'programs', 'peringatanTa', 'hariIni'));
+    }
+
 
     public function create(Request $request)
     {

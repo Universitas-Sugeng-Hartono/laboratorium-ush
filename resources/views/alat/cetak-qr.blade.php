@@ -178,7 +178,7 @@
         @foreach($alats as $item)
         <div class="label-card">
             <div class="label-qr">
-                {!! SimpleSoftwareIO\QrCode\Facades\QrCode::size(80)->generate($item->kode ?? ('ALT-' . $item->id)) !!}
+                {!! SimpleSoftwareIO\QrCode\Facades\QrCode::size(80)->generate($item->qr_code_payload) !!}
             </div>
             <div class="label-details">
                 <div class="label-institution">UNIVERSITAS SUGENG HARTONO - FTHB</div>

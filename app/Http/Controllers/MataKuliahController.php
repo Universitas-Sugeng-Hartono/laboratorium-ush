@@ -39,7 +39,8 @@ class MataKuliahController extends Controller
             $q = $request->q;
             $query->where(function ($sub) use ($q) {
                 $sub->where('matakuliah', 'like', "%{$q}%")
-                    ->orWhere('dosen', 'like', "%{$q}%");
+                    ->orWhere('dosen', 'like', "%{$q}%")
+                    ->orWhere('dosen2', 'like', "%{$q}%");
             });
         }
 
@@ -68,19 +69,25 @@ class MataKuliahController extends Controller
         $validated = $request->validate([
             'matakuliah' => 'required|string|max:255',
             'dosen' => 'required|string|max:255',
+            'dosen2' => 'nullable|string|max:255',
             'program_id' => 'required|exists:program,id',
             'nomor' => ['nullable', 'string', 'max:20', new NomorWhatsappRule],
+            'nomor2' => ['nullable', 'string', 'max:20', new NomorWhatsappRule],
             'ta_id' => 'nullable|exists:ta,id',
         ]);
 
         $taId = $request->filled('ta_id') ? $request->ta_id : ($taAktif ? $taAktif->id : null);
         $nomor = NomorWhatsapp::normalize($request->nomor);
+        $nomor2 = NomorWhatsapp::normalize($request->nomor2);
+        $dosen2 = trim((string) $request->dosen2);
 
         Matkul::create([
             'matakuliah' => trim($validated['matakuliah']),
             'dosen' => trim($validated['dosen']),
+            'dosen2' => $dosen2 !== '' ? $dosen2 : null,
             'program_id' => $validated['program_id'],
             'nomor' => $nomor,
+            'nomor2' => $nomor2,
             'ta_id' => $taId,
         ]);
 
@@ -100,18 +107,24 @@ class MataKuliahController extends Controller
         $validated = $request->validate([
             'matakuliah' => 'required|string|max:255',
             'dosen' => 'required|string|max:255',
+            'dosen2' => 'nullable|string|max:255',
             'program_id' => 'required|exists:program,id',
             'nomor' => ['nullable', 'string', 'max:20', new NomorWhatsappRule],
+            'nomor2' => ['nullable', 'string', 'max:20', new NomorWhatsappRule],
             'ta_id' => 'nullable|exists:ta,id',
         ]);
 
         $nomor = NomorWhatsapp::normalize($request->nomor);
+        $nomor2 = NomorWhatsapp::normalize($request->nomor2);
+        $dosen2 = trim((string) $request->dosen2);
 
         $matkul->update([
             'matakuliah' => trim($validated['matakuliah']),
             'dosen' => trim($validated['dosen']),
+            'dosen2' => $dosen2 !== '' ? $dosen2 : null,
             'program_id' => $validated['program_id'],
             'nomor' => $nomor,
+            'nomor2' => $nomor2,
             'ta_id' => $request->filled('ta_id') ? $request->ta_id : $matkul->ta_id,
         ]);
 
@@ -222,8 +235,10 @@ class MataKuliahController extends Controller
 
             $matakuliah = isset($columnMap['matakuliah'], $row[$columnMap['matakuliah']]) ? trim((string)$row[$columnMap['matakuliah']]) : '';
             $dosen = isset($columnMap['dosen'], $row[$columnMap['dosen']]) ? trim((string)$row[$columnMap['dosen']]) : '';
+            $dosen2 = isset($columnMap['dosen2'], $row[$columnMap['dosen2']]) ? trim((string)$row[$columnMap['dosen2']]) : '';
             $programVal = isset($columnMap['program'], $row[$columnMap['program']]) ? trim((string)$row[$columnMap['program']]) : '';
             $nomor = isset($columnMap['nomor'], $row[$columnMap['nomor']]) ? trim((string)$row[$columnMap['nomor']]) : null;
+            $nomor2 = isset($columnMap['nomor2'], $row[$columnMap['nomor2']]) ? trim((string)$row[$columnMap['nomor2']]) : null;
             $taVal = isset($columnMap['ta'], $row[$columnMap['ta']]) ? trim((string)$row[$columnMap['ta']]) : '';
 
             // Skip template subtitle row if user didn't delete it (e.g. contains "(Wajib)")
@@ -292,18 +307,12 @@ class MataKuliahController extends Controller
                 }
             }
 
-            if ($nomor !== null && $nomor !== '') {
-                if (is_numeric($nomor) && preg_match('/e/i', (string) $nomor)) {
-                    $nomor = number_format((float) $nomor, 0, '', '');
-                }
-                try {
-                    $nomor = NomorWhatsapp::normalize((string) $nomor);
-                } catch (\InvalidArgumentException $e) {
-                    $errors[] = "Baris {$rowNumber} ({$matakuliah}): {$e->getMessage()}";
-                    continue;
-                }
-            } else {
-                $nomor = null;
+            try {
+                $nomor = $this->normalizeImportNomor($nomor);
+                $nomor2 = $this->normalizeImportNomor($nomor2);
+            } catch (\InvalidArgumentException $e) {
+                $errors[] = "Baris {$rowNumber} ({$matakuliah}): {$e->getMessage()}";
+                continue;
             }
 
             // Check existing record in same Program and TA
@@ -313,18 +322,27 @@ class MataKuliahController extends Controller
                 ->first();
 
             if ($existing) {
-                $existing->update([
+                $payload = [
                     'matakuliah' => $matakuliah,
                     'dosen' => $dosen,
                     'nomor' => $nomor ?: $existing->nomor,
-                ]);
+                ];
+                if ($dosen2 !== '') {
+                    $payload['dosen2'] = $dosen2;
+                }
+                if ($nomor2) {
+                    $payload['nomor2'] = $nomor2;
+                }
+                $existing->update($payload);
                 $updatedCount++;
             } else {
                 Matkul::create([
                     'matakuliah' => $matakuliah,
                     'dosen' => $dosen,
+                    'dosen2' => $dosen2 !== '' ? $dosen2 : null,
                     'program_id' => $programId,
                     'nomor' => $nomor,
+                    'nomor2' => $nomor2,
                     'ta_id' => $taId,
                 ]);
                 $createdCount++;
@@ -359,12 +377,18 @@ class MataKuliahController extends Controller
             $rawKey = strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', (string) $name)));
             if ($rawKey === '') continue;
 
+            $kedua = str_contains($rawKey, '2') || str_contains($rawKey, 'kedua');
+
             if (str_contains($rawKey, 'matakuliah') || str_contains($rawKey, 'mata_kuliah') || str_contains($rawKey, 'nama_mk') || $rawKey === 'mk') {
                 $map['matakuliah'] = $index;
+            } elseif ($kedua && (str_contains($rawKey, 'dosen') || str_contains($rawKey, 'pengampu'))) {
+                $map['dosen2'] = $index;
             } elseif (str_contains($rawKey, 'dosen') || str_contains($rawKey, 'pengampu')) {
                 $map['dosen'] = $index;
             } elseif (str_contains($rawKey, 'program') || str_contains($rawKey, 'prodi') || str_contains($rawKey, 'jurusan')) {
                 $map['program'] = $index;
+            } elseif ($kedua && (str_contains($rawKey, 'nomor') || str_contains($rawKey, 'hp') || str_contains($rawKey, 'wa') || str_contains($rawKey, 'telepon'))) {
+                $map['nomor2'] = $index;
             } elseif (str_contains($rawKey, 'nomor') || str_contains($rawKey, 'hp') || str_contains($rawKey, 'wa') || str_contains($rawKey, 'telepon')) {
                 $map['nomor'] = $index;
             } elseif (str_contains($rawKey, 'tahun') || str_contains($rawKey, 'ta') || str_contains($rawKey, 'akademik')) {
@@ -372,6 +396,19 @@ class MataKuliahController extends Controller
             }
         }
         return $map;
+    }
+
+    private function normalizeImportNomor($nomor): ?string
+    {
+        if ($nomor === null || trim((string) $nomor) === '') {
+            return null;
+        }
+
+        if (is_numeric($nomor) && preg_match('/e/i', (string) $nomor)) {
+            $nomor = number_format((float) $nomor, 0, '', '');
+        }
+
+        return NomorWhatsapp::normalize((string) $nomor);
     }
 
     private function isRowEmpty(array $row): bool

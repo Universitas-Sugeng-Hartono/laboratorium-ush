@@ -78,6 +78,7 @@
                                 <select name="kondisi" id="kondisi" class="form-control">
                                     <option value="baik" {{ old('kondisi', $alat->kondisi) == 'baik' ? 'selected' : '' }}>Baik (Layak Pakai Penuh)</option>
                                     <option value="rusak_ringan" {{ old('kondisi', $alat->kondisi) == 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan (Perlu Servis Minor)</option>
+                                    <option value="rusak" {{ old('kondisi', $alat->kondisi) == 'rusak' ? 'selected' : '' }}>Rusak</option>
                                     <option value="rusak_berat" {{ old('kondisi', $alat->kondisi) == 'rusak_berat' ? 'selected' : '' }}>Rusak Berat (Tidak Layak/Afkir)</option>
                                 </select>
                             </div>

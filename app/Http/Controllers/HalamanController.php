@@ -416,7 +416,46 @@ class HalamanController extends Controller
             return redirect()->back()->with('error', 'Gagal mengirim WhatsApp: ' . $result['error']);
         }
 
+        if (!empty($result['gagal'])) {
+            return redirect()->back()->with('success', 'Pesan WhatsApp terkirim. Nomor lain gagal: ' . implode('; ', $result['gagal']));
+        }
+
         return redirect()->back()->with('success', 'Pesan WhatsApp berhasil dikirim!');
+    }
+
+    public function kirimPengingatJurnal($id)
+    {
+        $jadwal = Jadwal::with(['matkulId', 'labId'])->findOrFail($id);
+        if (!Jadwal::padaTaAktif()->where('id', $jadwal->id)->exists()) {
+            return redirect()->back()->with('error', Ta::pesanJikaTidakAktif() ?? 'Pengingat hanya dikirim untuk jadwal tahun akademik aktif.');
+        }
+
+        $tanggal = Carbon::parse($jadwal->jadwal)->toDateString();
+        if ($tanggal > Carbon::now('Asia/Jakarta')->toDateString()) {
+            return redirect()->back()->with('error', 'Pengingat jurnal hanya untuk jadwal yang tanggalnya sudah lewat atau hari ini.');
+        }
+
+        if (Jurnal::where('jadwal_id', $jadwal->id)->exists()) {
+            return redirect()->back()->with('error', 'Jurnal untuk jadwal ini sudah diisi.');
+        }
+
+        $result = $this->kirimPengingatJurnalBelum($jadwal);
+        if (!$result['ok']) {
+            return redirect()->back()->with('error', 'Gagal mengirim WhatsApp: ' . $result['error']);
+        }
+
+        if ($result['gagal'] > 0) {
+            $gagal = collect($result['detail'])
+                ->where('status', 'gagal')
+                ->map(function ($item) {
+                    return ($item['dosen'] ?? 'Dosen') . ': ' . ($item['keterangan'] ?? 'gagal');
+                })
+                ->implode('; ');
+
+            return redirect()->back()->with('success', 'Pesan WhatsApp terkirim. Nomor lain gagal: ' . $gagal);
+        }
+
+        return redirect()->back()->with('success', 'Pengingat jurnal berhasil dikirim.');
     }
 
     public function AutoKirimWA(Request $request)
@@ -563,7 +602,6 @@ class HalamanController extends Controller
 
         foreach ($jadwals as $jadwal) {
             $jadwalTime = Carbon::parse($jadwal->jadwal);
-            $jadwalDate = $jadwalTime->format('Y-m-d');
 
             // Jika bukan custom date (hari ini), lewati jadwal yang belum waktunya
             if (!$isCustomDate && $nowTime->lt($jadwalTime)) {
@@ -581,66 +619,12 @@ class HalamanController extends Controller
 
             $results['belum_jurnal']++;
 
-            // Kirim WA reminder
-            $dosen = $jadwal->matkulId->dosen ?? 'Bapak/Ibu Dosen';
-            $matakuliah = $jadwal->matkulId->matakuliah ?? '-';
-            $lab = $jadwal->labId->laboratorium ?? '-';
-            $destination = $jadwal->matkulId->nomor ?? null;
-
-            if (!$destination) {
-                $results['gagal']++;
-                $results['detail'][] = [
-                    'jadwal_id' => $jadwal->id,
-                    'dosen' => $dosen,
-                    'matakuliah' => $matakuliah,
-                    'tanggal' => $jadwalDate,
-                    'status' => 'gagal',
-                    'keterangan' => 'Nomor HP tidak tersedia',
-                ];
-                continue;
+            $kirim = $this->kirimPengingatJurnalBelum($jadwal);
+            $results['terkirim'] += $kirim['terkirim'];
+            $results['gagal'] += $kirim['gagal'];
+            foreach ($kirim['detail'] as $baris) {
+                $results['detail'][] = $baris;
             }
-
-            $linkJadwal = "https://silabo.ush.ac.id/jadwallab?tanggal={$jadwalDate}";
-            $selesai = $jadwal->jam_selesai
-                ? Carbon::parse($jadwal->jam_selesai)->format('H.i')
-                : $jadwalTime->copy()->addMinutes(170)->format('H.i');
-            $tanggalTeks = $jadwalTime->copy()->locale('id')->isoFormat('D MMMM Y');
-
-            $stringPesanan =
-                "Yth. Bapak/Ibu {$dosen}.\n" .
-                "Pengingat jurnal belum diisi.\n" .
-                "Mata kuliah: {$matakuliah}\n" .
-                "Laboratorium: {$lab}\n" .
-                "Tanggal: {$tanggalTeks}\n" .
-                "Jam: {$jadwalTime->format('H.i')} - {$selesai}\n" .
-                "{$linkJadwal}\n" .
-                "Terima kasih.";
-
-            $result = app(FonnteClient::class)->send($destination, $stringPesanan);
-
-            if (!$result['ok']) {
-                $results['gagal']++;
-                $results['detail'][] = [
-                    'jadwal_id' => $jadwal->id,
-                    'dosen' => $dosen,
-                    'matakuliah' => $matakuliah,
-                    'tanggal' => $jadwalDate,
-                    'status' => 'gagal',
-                    'keterangan' => $result['error'],
-                ];
-            } else {
-                $results['terkirim']++;
-                $results['detail'][] = [
-                    'jadwal_id' => $jadwal->id,
-                    'dosen' => $dosen,
-                    'matakuliah' => $matakuliah,
-                    'tanggal' => $jadwalDate,
-                    'nomor' => $destination,
-                    'status' => 'terkirim',
-                ];
-            }
-
-            usleep(1000000);
         }
 
         return response()->json($results);
@@ -686,31 +670,132 @@ class HalamanController extends Controller
         return $given !== '' && hash_equals($secret, $given);
     }
 
-    private function sendJadwalReminder(Jadwal $jadwal): array
+    private function kirimPengingatJurnalBelum(Jadwal $jadwal): array
     {
-        $nomor = optional($jadwal->matkulId)->nomor;
-        if (!$nomor) {
-            return ['ok' => false, 'error' => 'Nomor WhatsApp dosen tidak ditemukan.'];
+        $jadwalTime = Carbon::parse($jadwal->jadwal);
+        $jadwalDate = $jadwalTime->format('Y-m-d');
+        $matakuliah = optional($jadwal->matkulId)->matakuliah ?? '-';
+        $lab = optional($jadwal->labId)->laboratorium ?? '-';
+        $penerima = optional($jadwal->matkulId)->penerimaWhatsapp() ?? [];
+
+        if ($penerima === []) {
+            return [
+                'ok' => false,
+                'error' => 'Nomor WhatsApp dosen tidak ditemukan.',
+                'terkirim' => 0,
+                'gagal' => 1,
+                'detail' => [[
+                    'jadwal_id' => $jadwal->id,
+                    'dosen' => optional($jadwal->matkulId)->dosen ?? 'Bapak/Ibu Dosen',
+                    'matakuliah' => $matakuliah,
+                    'tanggal' => $jadwalDate,
+                    'status' => 'gagal',
+                    'keterangan' => 'Nomor HP tidak tersedia',
+                ]],
+            ];
         }
 
-        $dosen = optional($jadwal->matkulId)->dosen ?? 'Bapak/Ibu';
+        $linkJadwal = "https://silabo.ush.ac.id/jadwallab?tanggal={$jadwalDate}";
+        $selesai = $jadwal->jam_selesai
+            ? Carbon::parse($jadwal->jam_selesai)->format('H.i')
+            : $jadwalTime->copy()->addMinutes(170)->format('H.i');
+        $tanggalTeks = $jadwalTime->copy()->locale('id')->isoFormat('D MMMM Y');
+        $fonnte = app(FonnteClient::class);
+        $terkirim = 0;
+        $gagal = 0;
+        $detail = [];
+        $alasan = [];
+
+        foreach ($penerima as $orang) {
+            $stringPesanan =
+                "Yth. Bapak/Ibu {$orang['dosen']}.\n" .
+                "Pengingat jurnal belum diisi.\n" .
+                "Mata kuliah: {$matakuliah}\n" .
+                "Laboratorium: {$lab}\n" .
+                "Tanggal: {$tanggalTeks}\n" .
+                "Jam: {$jadwalTime->format('H.i')} - {$selesai}\n" .
+                "{$linkJadwal}\n" .
+                "Terima kasih.";
+
+            $result = $fonnte->send($orang['nomor'], $stringPesanan);
+
+            if (!$result['ok']) {
+                $gagal++;
+                $alasan[] = $orang['dosen'] . ': ' . $result['error'];
+                $detail[] = [
+                    'jadwal_id' => $jadwal->id,
+                    'dosen' => $orang['dosen'],
+                    'matakuliah' => $matakuliah,
+                    'tanggal' => $jadwalDate,
+                    'nomor' => $orang['nomor'],
+                    'status' => 'gagal',
+                    'keterangan' => $result['error'],
+                ];
+            } else {
+                $terkirim++;
+                $detail[] = [
+                    'jadwal_id' => $jadwal->id,
+                    'dosen' => $orang['dosen'],
+                    'matakuliah' => $matakuliah,
+                    'tanggal' => $jadwalDate,
+                    'nomor' => $orang['nomor'],
+                    'status' => 'terkirim',
+                ];
+            }
+
+            usleep(1000000);
+        }
+
+        return [
+            'ok' => $terkirim > 0,
+            'error' => $terkirim === 0 ? implode('; ', $alasan) : null,
+            'terkirim' => $terkirim,
+            'gagal' => $gagal,
+            'detail' => $detail,
+        ];
+    }
+
+    private function sendJadwalReminder(Jadwal $jadwal): array
+    {
+        $penerima = optional($jadwal->matkulId)->penerimaWhatsapp() ?? [];
+        if ($penerima === []) {
+            return ['ok' => false, 'error' => 'Nomor WhatsApp dosen tidak ditemukan.', 'gagal' => []];
+        }
+
         $matkul = optional($jadwal->matkulId)->matakuliah ?? '-';
         $lab = optional($jadwal->labId)->laboratorium ?? '-';
         $waktu = Carbon::parse($jadwal->jadwal)->locale('id');
         $selesai = $jadwal->jam_selesai
             ? Carbon::parse($jadwal->jam_selesai)->format('H.i')
             : $waktu->copy()->addMinutes(170)->format('H.i');
-        $text =
-            "Yth. Bapak/Ibu {$dosen}.\n" .
-            "Pengingat jadwal praktikum.\n" .
-            "Mata kuliah: {$matkul}\n" .
-            "Laboratorium: {$lab}\n" .
-            "Tanggal: {$waktu->isoFormat('D MMMM Y')}\n" .
-            "Jam: {$waktu->format('H.i')} - {$selesai}\n" .
-            "https://silabo.ush.ac.id/jadwallab\n" .
-            "Terima kasih.";
+        $fonnte = app(FonnteClient::class);
+        $sukses = 0;
+        $gagal = [];
 
-        return app(FonnteClient::class)->send($nomor, $text);
+        foreach ($penerima as $orang) {
+            $text =
+                "Yth. Bapak/Ibu {$orang['dosen']}.\n" .
+                "Pengingat jadwal praktikum.\n" .
+                "Mata kuliah: {$matkul}\n" .
+                "Laboratorium: {$lab}\n" .
+                "Tanggal: {$waktu->isoFormat('D MMMM Y')}\n" .
+                "Jam: {$waktu->format('H.i')} - {$selesai}\n" .
+                "https://silabo.ush.ac.id/jadwallab\n" .
+                "Terima kasih.";
+
+            $result = $fonnte->send($orang['nomor'], $text);
+            if ($result['ok']) {
+                $sukses++;
+            } else {
+                $gagal[] = $orang['dosen'] . ': ' . $result['error'];
+            }
+        }
+
+        return [
+            'ok' => $sukses > 0,
+            'error' => $sukses === 0 ? implode('; ', $gagal) : null,
+            'gagal' => $gagal,
+        ];
     }
 
 }

@@ -19,8 +19,13 @@ class Bahan extends Model
         'jumlah',
         'satuan',
         'stok_minimum',
+        'tanggal_kedaluwarsa',
         'lokasi_penyimpanan',
         'spesifikasi',
+    ];
+
+    protected $casts = [
+        'tanggal_kedaluwarsa' => 'date',
     ];
 
     public function getStatusStokAttribute()

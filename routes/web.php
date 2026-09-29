@@ -27,6 +27,7 @@ Route::get('/create-peminjaman', [HalamanController::class, 'sessionCreatePeminj
 Route::post('/peminjaman/store', [HalamanController::class, 'storePeminjaman']);
 Route::get('/peminjaman/{id}/cetak', [HalamanController::class, 'exportPinPdf']);
 Route::get('/stokopname', [HalamanController::class, 'StokOpname']);
+Route::get('/alat/{id}/kartu', [AlatController::class, 'kartu'])->name('alat.kartu');
 Route::get('/autokirimwa', [HalamanController::class, 'AutoKirimWA'])->name('auto.kirim.wa');
 Route::get('/api/reminder-jurnal', [HalamanController::class, 'ReminderJurnalWA'])->name('reminder.jurnal.wa');
 Route::get('/admin', [LoginController::class, 'getLogin'])->name('admin.login');
@@ -58,12 +59,14 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:super,laboran')->group(function () {
+        Route::get('/jurnal-pemantauan', [JurnalController::class, 'pemantauan'])->name('jurnal.pemantauan');
         Route::get('/alat/template', [AlatController::class, 'downloadTemplate'])->name('alat.template');
         Route::post('/alat/import', [AlatController::class, 'import'])->name('alat.import');
         Route::get('/bahan/template', [BahanController::class, 'downloadTemplate'])->name('bahan.template');
         Route::post('/bahan/import', [BahanController::class, 'import'])->name('bahan.import');
         Route::get('/alat/cetak-qr-batch', [AlatController::class, 'cetakQrBatch'])->name('alat.cetak.qr.batch');
         Route::get('/alat/{id}/cetak-qr', [AlatController::class, 'cetakQr'])->name('alat.cetak.qr');
+        Route::post('/alat/{id}/riwayat', [AlatController::class, 'simpanRiwayat'])->name('alat.riwayat.store');
         Route::resource('alat', AlatController::class);
         Route::resource('bahan', BahanController::class);
         Route::get('/ta/otomatis', [TaController::class, 'generateTA'])->name('ta.otomatis');
@@ -77,6 +80,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:super')->group(function () {
+        Route::post('/jurnal/{id}/pengingat', [HalamanController::class, 'kirimPengingatJurnal'])->name('jurnal.pengingat');
         Route::resource('user', UserController::class);
         Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit.index');
         Route::get('/audit-log/{id}', [AuditLogController::class, 'show'])->name('audit.show');

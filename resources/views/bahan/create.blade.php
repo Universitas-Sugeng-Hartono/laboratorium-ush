@@ -91,6 +91,10 @@
                                     placeholder="Contoh: 10" min="0" value="{{ old('stok_minimum', 0) }}">
                                 <small class="text-muted">Peringatan status menipis jika &le; batas ini</small>
                             </div>
+                            <div class="col-md-4">
+                                <label for="tanggal_kedaluwarsa" class="form-label fw-bold">Tanggal Kedaluwarsa</label>
+                                <input type="date" name="tanggal_kedaluwarsa" id="tanggal_kedaluwarsa" class="form-control" value="{{ old('tanggal_kedaluwarsa') }}">
+                            </div>
 
                             <div class="col-md-12">
                                 <label for="lokasi_penyimpanan" class="form-label fw-bold">Lokasi Penyimpanan Spesifik</label>

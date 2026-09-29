@@ -14,10 +14,34 @@ class Matkul extends Model
     protected $fillable = [
         'matakuliah',
         'dosen',
+        'dosen2',
         'program_id',
         'nomor',
+        'nomor2',
         'ta_id'
     ];
+
+    public function penerimaWhatsapp(): array
+    {
+        $daftar = [];
+        $terpakai = [];
+
+        foreach ([[$this->dosen, $this->nomor], [$this->dosen2, $this->nomor2]] as [$nama, $nomor]) {
+            $nomor = trim((string) $nomor);
+            if ($nomor === '' || isset($terpakai[$nomor])) {
+                continue;
+            }
+
+            $terpakai[$nomor] = true;
+            $nama = trim((string) $nama);
+            $daftar[] = [
+                'dosen' => $nama !== '' ? $nama : 'Bapak/Ibu',
+                'nomor' => $nomor,
+            ];
+        }
+
+        return $daftar;
+    }
 
     public function programId()
     {

@@ -50,6 +50,11 @@ class Jadwal extends Model
         return $this->belongsTo(Laboratorium::class, 'lab_id');
     }
 
+    public function jurnals()
+    {
+        return $this->hasMany(Jurnal::class, 'jadwal_id');
+    }
+
     public function scopePadaTaAktif($query)
     {
         return $query->whereHas('matkulId.taId', function ($ta) {

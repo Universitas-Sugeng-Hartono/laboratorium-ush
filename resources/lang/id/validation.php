@@ -122,6 +122,8 @@ return [
         'matakuliah' => 'mata kuliah',
         'matakuliah_id' => 'mata kuliah',
         'dosen' => 'dosen',
+        'dosen2' => 'dosen kedua',
+        'nomor2' => 'nomor WhatsApp dosen kedua',
         'program' => 'program studi',
         'program_id' => 'program studi',
         'lab_id' => 'laboratorium',

@@ -19,6 +19,11 @@ class PemakaianAlat extends Model
         'rusak',
     ];
     
+    public function pemakaian()
+    {
+        return $this->belongsTo(Pemakaian::class, 'pemakaian_id');
+    }
+
     public function alatid()
     {
         return $this->belongsTo(Alat::class, 'alat_id');

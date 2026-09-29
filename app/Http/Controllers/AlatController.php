@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Alat;
 use App\Models\Laboratorium;
+use App\Models\PemakaianAlat;
 use App\Traits\RejectsDeleteWhenUsed;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -123,6 +124,41 @@ class AlatController extends Controller
         }
 
         return $this->deleteOrReject($alat, 'alat.index', 'Alat berhasil dihapus!');
+    }
+
+    public function kartu($id)
+    {
+        $alat = Alat::with(['labId', 'riwayat'])->findOrFail($id);
+        $peminjaman = PemakaianAlat::with('pemakaian')
+            ->where('alat_id', $alat->id)
+            ->get()
+            ->sortByDesc(function ($baris) {
+                return optional($baris->pemakaian)->tgl_peminjaman ?: optional($baris->created_at)->format('Y-m-d');
+            })
+            ->values();
+        $pengguna = auth()->user();
+        $bolehUbah = $pengguna && ($pengguna->role === 'super' || $pengguna->isLaboran());
+
+        return view('alat.kartu', compact('alat', 'peminjaman', 'bolehUbah'));
+    }
+
+    public function simpanRiwayat(Request $request, $id)
+    {
+        $alat = Alat::findOrFail($id);
+        $data = $request->validate([
+            'tanggal' => 'required|date',
+            'nama_pelapor' => 'required|string|max:255',
+            'jenis' => 'required|in:rusak,dalam_perbaikan,layak_pakai',
+            'keterangan' => 'nullable|string',
+        ]);
+
+        DB::transaction(function () use ($alat, $data) {
+            $alat->riwayat()->create($data);
+            $alat->terapkanJenisRiwayat($data['jenis']);
+            $alat->save();
+        });
+
+        return redirect()->route('alat.kartu', $alat->id)->with('success', 'Riwayat alat dicatat.');
     }
 
     public function cetakQr($id)

@@ -138,6 +138,20 @@
                                 <div class="form-text">Awalan 08 atau 628. Nomor disimpan sebagai 628.</div>
                             </div>
 
+                            <div class="col-md-7">
+                                <label for="dosen2" class="form-label">Dosen Kedua</label>
+                                <input type="text" name="dosen2" id="dosen2" class="form-control"
+                                    placeholder="Opsional" value="{{ old('dosen2') }}">
+                            </div>
+
+                            <div class="col-md-5">
+                                <label for="nomor2" class="form-label">No. WhatsApp Dosen Kedua</label>
+                                <input type="tel" name="nomor2" id="nomor2" class="form-control"
+                                    placeholder="08... atau 628..." inputmode="numeric" maxlength="15"
+                                    value="{{ old('nomor2') }}">
+                                <div class="form-text">Opsional. Awalan 08 atau 628, disimpan sebagai 628.</div>
+                            </div>
+
                             <div class="col-md-6">
                                 <label for="program_id" class="form-label">Program Studi <span class="text-danger">*</span></label>
                                 <select name="program_id" id="program_id" class="form-select" required>
