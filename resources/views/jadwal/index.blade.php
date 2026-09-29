@@ -274,6 +274,8 @@
                         <th>Hari / Tanggal</th>
                         <th style="white-space: nowrap;">Waktu (Mulai &ndash; Selesai)</th>
                         <th>Prodi</th>
+                        <th style="width:80px">Semester</th>
+                        <th style="width:60px">Kelas</th>
                         <th style="width:120px;" class="text-end">Aksi</th>
                     </tr>
                 </thead>
@@ -295,6 +297,8 @@
                             <span class="time-label" style="white-space: nowrap;">{{ $jadwal->jam_mulai }} &ndash; {{ $jadwal->jam_selesai_formatted }}</span>
                         </td>
                         <td class="prodi-text">{{ $jadwal->programId->program ?? '-' }}</td>
+                        <td>{{ $jadwal->semester ?: '–' }}</td>
+                        <td>{{ $jadwal->kelas ?: '–' }}</td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-1">
                                 <button type="button" class="btn-action btn-action-reschedule" data-bs-toggle="modal" data-bs-target="#editStatusModal{{ $jadwal->id }}" title="Reschedule">
@@ -316,7 +320,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7">
+                        <td colspan="9">
                             <div class="empty-state">
                                 <i class="far fa-calendar-times d-block"></i>
                                 <h6>Tidak ada jadwal</h6>
@@ -343,7 +347,7 @@
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title" id="importJadwalModalLabel">Import jadwal</h5>
-                    <p class="modal-kicker">Isi nama laboratorium, program studi, dan mata kuliah. Setiap baris baru membuat 8 jadwal mingguan. Jadwal yang sudah ada dilewati.</p>
+                    <p class="modal-kicker">Isi nama laboratorium, program studi, mata kuliah, semester, dan kelas. Satu baris baru membuat 8 jadwal mingguan. Baris yang sama dilewati.</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
@@ -361,7 +365,7 @@
                             <a href="{{ asset('templates/jadwal_import_template.xlsx') }}" class="btn-modal-save" download>Excel (.xlsx)</a>
                             <a href="{{ asset('templates/jadwal_import_template.csv') }}" class="btn-modal-cancel" download>CSV (.csv)</a>
                         </div>
-                        <span class="hint">Berkas Excel menjaga kolom tetap terpisah saat dibuka di Microsoft Excel.</span>
+                        <span class="hint">Berkas Excel memuat daftar pilihan laboratorium, program studi, dan mata kuliah.</span>
                     </div>
                 </div>
                 <div class="modal-footer">

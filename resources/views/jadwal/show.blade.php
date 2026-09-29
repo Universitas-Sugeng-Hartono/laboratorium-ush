@@ -62,6 +62,14 @@
                             <div class="info-value">{{ optional($jadwal->programId)->program ?? '-' }}</div>
                         </div>
                         <div class="col-md-6">
+                            <div class="info-label">Semester</div>
+                            <div class="info-value">{{ $jadwal->semester ?: '–' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-label">Kelas</div>
+                            <div class="info-value">{{ $jadwal->kelas ?: '–' }}</div>
+                        </div>
+                        <div class="col-md-6">
                             <div class="info-label">Tanggal & Jam Mulai</div>
                             <div class="info-value">{{ $jadwal->jadwal ? \Carbon\Carbon::parse($jadwal->jadwal)->translatedFormat('dddd, D MMMM Y HH:mm') : '-' }}</div>
                         </div>

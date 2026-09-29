@@ -200,6 +200,22 @@
                             </div>
 
                             <div class="col-md-6">
+                                <label for="semester" class="form-label">Semester <span class="text-danger">*</span></label>
+                                <select name="semester" id="semester" class="form-select" required>
+                                    <option value="">-- Pilih Semester --</option>
+                                    @for ($i = 1; $i <= 8; $i++)
+                                    <option value="{{ $i }}" {{ (string) old('semester') === (string) $i ? 'selected' : '' }}>{{ $i }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="kelas" class="form-label">Kelas <span class="text-muted fw-normal">(Opsional)</span></label>
+                                <input type="text" name="kelas" id="kelas" class="form-control" maxlength="1" value="{{ old('kelas') }}" placeholder="A">
+                                <div class="form-text">Satu huruf, misalnya A. Kosongkan jika tidak ada kelas.</div>
+                            </div>
+
+                            <div class="col-md-6">
                                 <label for="jadwal" class="form-label">Tanggal & Jam Mulai <span class="text-danger">*</span></label>
                                 <input type="datetime-local" name="jadwal" id="jadwal" class="form-control"
                                     value="{{ old('jadwal') }}" required>

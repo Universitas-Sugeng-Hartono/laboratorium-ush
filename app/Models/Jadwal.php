@@ -17,6 +17,8 @@ class Jadwal extends Model
         'jam_selesai',
         'program_id',
         'lab_id',
+        'semester',
+        'kelas',
         'wa_sent_at',
     ];
 

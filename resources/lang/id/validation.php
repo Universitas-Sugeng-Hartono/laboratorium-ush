@@ -127,6 +127,8 @@ return [
         'lab_id' => 'laboratorium',
         'laboratorium' => 'laboratorium',
         'jadwal' => 'jadwal',
+        'semester' => 'semester',
+        'kelas' => 'kelas',
         'tanggal' => 'tanggal',
         'jam_selesai' => 'jam selesai',
         'ta' => 'tahun akademik',

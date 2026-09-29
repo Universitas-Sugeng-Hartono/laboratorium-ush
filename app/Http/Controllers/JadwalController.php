@@ -79,6 +79,10 @@ class JadwalController extends Controller
             'jam_selesai' => 'nullable',
             'program_id' => 'required',
             'lab_id' => 'required',
+            'semester' => 'required|integer|min:1|max:8',
+            'kelas' => ['nullable', 'regex:/^[A-Za-z]$/'],
+        ], [
+            'kelas.regex' => 'Kelas harus berupa satu huruf.',
         ]);
 
         $jamSelesai = $request->jam_selesai;
@@ -92,7 +96,9 @@ class JadwalController extends Controller
                 (int) $request->program_id,
                 (int) $request->lab_id,
                 Carbon::parse($request->jadwal),
-                $jamSelesai
+                $jamSelesai,
+                (int) $request->semester,
+                $request->filled('kelas') ? strtoupper($request->kelas) : null
             );
         } catch (\RuntimeException $e) {
             return redirect()->back()->with('error', $e->getMessage());
@@ -140,11 +146,8 @@ class JadwalController extends Controller
 
         $header = array_shift($rows);
         $columnMap = $this->mapCsvHeaders($header);
-        $hasLab = isset($columnMap['laboratorium']) || isset($columnMap['lab_id']);
-        $hasProgram = isset($columnMap['program']) || isset($columnMap['program_id']);
-        $hasMatkul = isset($columnMap['matakuliah']) || isset($columnMap['matakuliah_id']);
-        if (!$hasLab || !$hasProgram || !$hasMatkul || !isset($columnMap['tanggal']) || !isset($columnMap['jam'])) {
-            return redirect()->back()->with('error', 'Header berkas harus memuat laboratorium, program studi, mata kuliah, tanggal, dan jam.');
+        if (!isset($columnMap['laboratorium'], $columnMap['program'], $columnMap['matakuliah'], $columnMap['semester'], $columnMap['tanggal'], $columnMap['jam'])) {
+            return redirect()->back()->with('error', 'Header berkas harus memuat laboratorium, program_studi, mata_kuliah, semester, tanggal, dan jam.');
         }
 
         $rowNumber = 1;
@@ -227,6 +230,10 @@ class JadwalController extends Controller
             'jam_selesai' => 'nullable',
             'program_id' => 'required',
             'lab_id' => 'required',
+            'semester' => 'sometimes|required|integer|min:1|max:8',
+            'kelas' => ['nullable', 'regex:/^[A-Za-z]$/'],
+        ], [
+            'kelas.regex' => 'Kelas harus berupa satu huruf.',
         ]);
 
         $jamSelesai = $request->jam_selesai;
@@ -236,6 +243,12 @@ class JadwalController extends Controller
 
         $data = $request->only(['matakuliah_id', 'jadwal', 'jam_selesai', 'program_id', 'lab_id']);
         $data['jam_selesai'] = $jamSelesai;
+        if ($request->exists('semester')) {
+            $data['semester'] = (int) $request->semester;
+        }
+        if ($request->exists('kelas')) {
+            $data['kelas'] = $request->filled('kelas') ? strtoupper($request->kelas) : null;
+        }
         $jadwal->update($data);
 
         return redirect()->route('jadwal.index')->with('success', 'Jadwal berhasil diperbarui');
@@ -247,7 +260,7 @@ class JadwalController extends Controller
         return redirect()->route('jadwal.index')->with('success', 'Jadwal berhasil dihapus');
     }
 
-    private function createWeeklySchedules(int $matakuliahId, int $programId, int $labId, Carbon $tanggalAwal, ?string $jamSelesai = null): void
+    private function createWeeklySchedules(int $matakuliahId, int $programId, int $labId, Carbon $tanggalAwal, ?string $jamSelesai = null, ?int $semester = null, ?string $kelas = null): void
     {
         $taAktif = Ta::where('status', 'aktif')->first();
         if (!$taAktif) {
@@ -265,6 +278,8 @@ class JadwalController extends Controller
                 'jam_selesai' => $jamSelesai,
                 'program_id' => $programId,
                 'lab_id' => $labId,
+                'semester' => $semester,
+                'kelas' => $kelas,
             ]);
         }
     }
@@ -273,21 +288,23 @@ class JadwalController extends Controller
     {
         $labId = $this->resolveImportId(
             $data['laboratorium'] ?? '',
-            $data['lab_id'] ?? '',
+            '',
             Laboratorium::all(),
             'laboratorium',
             'Laboratorium'
         );
         $programId = $this->resolveImportId(
             $data['program'] ?? '',
-            $data['program_id'] ?? '',
+            '',
             Program::all(),
             'program',
             'Program studi'
         );
         $tanggal = $data['tanggal'] ?? '';
         $jam = $data['jam'] ?? '';
-        $jamSelesai = $data['jam_selesai'] ?? null;
+        $jamSelesai = trim((string) ($data['jam_selesai'] ?? ''));
+        $semester = $this->parseSemester($data['semester'] ?? '');
+        $kelas = $this->parseKelas($data['kelas'] ?? '');
 
         // Convert Excel serial date numbers if applicable
         if (is_numeric($tanggal) && $tanggal > 30000 && $tanggal < 60000) {
@@ -309,28 +326,17 @@ class JadwalController extends Controller
 
         $taAktif = Ta::where('status', 'aktif')->first();
         $matkulName = trim((string) ($data['matakuliah'] ?? ''));
-        $matkulIdRaw = trim((string) ($data['matakuliah_id'] ?? ''));
-        $matkul = null;
-
-        if ($matkulName !== '') {
-            $needle = mb_strtolower($matkulName);
-            $matkul = Matkul::where('program_id', $programId)
-                ->where('ta_id', $taAktif->id)
-                ->whereRaw('LOWER(matakuliah) = ?', [$needle])
-                ->first();
-            if (!$matkul) {
-                throw new \InvalidArgumentException("Mata kuliah '{$matkulName}' tidak ditemukan pada program studi dan tahun akademik aktif");
-            }
-        } elseif ($matkulIdRaw !== '' && ctype_digit($matkulIdRaw)) {
-            $matkul = Matkul::where('id', (int) $matkulIdRaw)
-                ->where('program_id', $programId)
-                ->where('ta_id', $taAktif->id)
-                ->first();
-            if (!$matkul) {
-                throw new \InvalidArgumentException('Mata kuliah tidak valid untuk program studi dan tahun akademik aktif');
-            }
-        } else {
+        if ($matkulName === '') {
             throw new \InvalidArgumentException('Nama mata kuliah wajib diisi');
+        }
+
+        $needle = mb_strtolower($matkulName);
+        $matkul = Matkul::where('program_id', $programId)
+            ->where('ta_id', $taAktif->id)
+            ->whereRaw('LOWER(matakuliah) = ?', [$needle])
+            ->first();
+        if (!$matkul) {
+            throw new \InvalidArgumentException("Mata kuliah '{$matkulName}' tidak ditemukan pada program studi dan tahun akademik aktif");
         }
 
         $matakuliahId = $matkul->id;
@@ -345,22 +351,11 @@ class JadwalController extends Controller
             $jamSelesai = $tanggalAwal->copy()->addMinutes(170)->format('H:i');
         }
 
-        $slots = [];
-        for ($i = 0; $i < 8; $i++) {
-            $slots[] = $tanggalAwal->copy()->addWeeks($i)->format('Y-m-d H:i:s');
-        }
-
-        $alreadyExists = Jadwal::where('matakuliah_id', $matakuliahId)
-            ->where('program_id', $programId)
-            ->where('lab_id', $labId)
-            ->whereIn('jadwal', $slots)
-            ->exists();
-
-        if ($alreadyExists) {
+        if ($this->scheduleAlreadyExists($matakuliahId, $programId, $labId, $semester, $kelas, $tanggalAwal)) {
             return 'skipped';
         }
 
-        $this->createWeeklySchedules($matakuliahId, $programId, $labId, $tanggalAwal, $jamSelesai);
+        $this->createWeeklySchedules($matakuliahId, $programId, $labId, $tanggalAwal, $jamSelesai, $semester, $kelas);
 
         return 'created';
     }
@@ -407,6 +402,10 @@ class JadwalController extends Controller
                 $map['program'] = $index;
             } elseif (str_contains($rawKey, 'matakuliah_id') || str_contains($rawKey, 'matkul_id')) {
                 $map['matakuliah_id'] = $index;
+            } elseif ($rawKey === 'semester') {
+                $map['semester'] = $index;
+            } elseif ($rawKey === 'kelas') {
+                $map['kelas'] = $index;
             } elseif (str_contains($rawKey, 'tanggal')) {
                 $map['tanggal'] = $index;
             } elseif (str_contains($rawKey, 'selesai')) {
@@ -430,6 +429,56 @@ class JadwalController extends Controller
             }
         }
         return true;
+    }
+
+    private function parseSemester(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '' || !is_numeric($value)) {
+            throw new \InvalidArgumentException('semester harus angka 1 sampai 8');
+        }
+
+        $number = (int) $value;
+        if ($number < 1 || $number > 8 || abs((float) $value - $number) > 0.001) {
+            throw new \InvalidArgumentException('semester harus angka 1 sampai 8');
+        }
+
+        return $number;
+    }
+
+    private function parseKelas(string $value): ?string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        if (!preg_match('/^[A-Za-z]$/', $value)) {
+            throw new \InvalidArgumentException('kelas harus satu huruf atau dikosongkan');
+        }
+
+        return strtoupper($value);
+    }
+
+    private function scheduleAlreadyExists(int $matakuliahId, int $programId, int $labId, int $semester, ?string $kelas, Carbon $tanggalAwal): bool
+    {
+        $start = $tanggalAwal->copy()->startOfMinute();
+        $query = Jadwal::where('matakuliah_id', $matakuliahId)
+            ->where('program_id', $programId)
+            ->where('lab_id', $labId)
+            ->where('semester', $semester)
+            ->where('jadwal', '>=', $start->format('Y-m-d H:i:s'))
+            ->where('jadwal', '<', $start->copy()->addMinute()->format('Y-m-d H:i:s'));
+
+        if ($kelas === null || $kelas === '') {
+            $query->where(function ($q) {
+                $q->whereNull('kelas')->orWhere('kelas', '');
+            });
+        } else {
+            $query->whereRaw('UPPER(kelas) = ?', [$kelas]);
+        }
+
+        return $query->exists();
     }
 
 }
