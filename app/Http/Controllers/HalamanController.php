@@ -460,14 +460,6 @@ class HalamanController extends Controller
 
     public function AutoKirimWA(Request $request)
     {
-        if ($request->query('token') !== null) {
-            abort(403, 'Akses ditolak. Token cron dikirim lewat header X-Cron-Token.');
-        }
-
-        if (!$this->cronAuthorized($request)) {
-            abort(403, 'Akses ditolak. Token tidak valid.');
-        }
-
         date_default_timezone_set('Asia/Jakarta');
 
         if ($pesanTa = Ta::pesanJikaTidakAktif()) {
@@ -520,13 +512,6 @@ class HalamanController extends Controller
      */
     public function ReminderJurnalWA(Request $request)
     {
-        if ($request->query('token') !== null) {
-            abort(403, 'Akses ditolak. Token cron dikirim lewat header X-Cron-Token.');
-        }
-
-        if (!$this->cronAuthorized($request)) {
-            abort(403, 'Akses ditolak. Token tidak valid.');
-        }
 
         date_default_timezone_set('Asia/Jakarta');
 
