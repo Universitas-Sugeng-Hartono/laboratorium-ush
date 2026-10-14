@@ -122,7 +122,10 @@
                 <h6 class="fw-bold text-dark mb-2">Tanda Tangan Dosen / Asisten</h6>
                 @if ($jurnal->ttd)
                 <div class="signature-box mt-2">
-                    <img src="{{ asset('storage/' . $jurnal->ttd) }}" alt="Tanda Tangan" style="max-height: 120px; max-width: 260px;" onerror="this.src='{{ asset($jurnal->ttd) }}'">
+                    <img src="{{ $jurnal->ttd_url }}" alt="Tanda Tangan" style="max-height: 120px; max-width: 260px;" onerror="this.onerror=null; this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('d-none');">
+                    <div class="d-none text-muted font-12 py-2">
+                        <i class="fas fa-exclamation-triangle text-warning me-1"></i> Berkas tanda tangan digital tidak ditemukan di server.
+                    </div>
                 </div>
                 @else
                 <p class="text-muted small mb-0">Belum ada tanda tangan yang tersimpan.</p>

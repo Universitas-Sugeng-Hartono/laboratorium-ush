@@ -150,7 +150,10 @@
                                 @if ($jurnal->ttd)
                                 <div class="mb-3 p-3 bg-light rounded-3 border d-inline-block">
                                     <span class="d-block text-muted font-11 mb-2">Tanda Tangan Tersimpan Saat Ini:</span>
-                                    <img src="{{ asset('storage/' . $jurnal->ttd) }}" alt="Tanda Tangan" style="max-height: 100px; max-width: 240px;" class="border rounded bg-white p-1" onerror="this.src='{{ asset($jurnal->ttd) }}'">
+                                    <img src="{{ $jurnal->ttd_url }}" alt="Tanda Tangan" style="max-height: 100px; max-width: 240px;" class="border rounded bg-white p-1" onerror="this.onerror=null; this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('d-none');">
+                                    <div class="d-none text-muted font-11 py-1">
+                                        <i class="fas fa-exclamation-triangle text-warning me-1"></i> Berkas tanda tangan lama tidak ditemukan di server.
+                                    </div>
                                 </div>
                                 @endif
 

@@ -277,7 +277,10 @@
                 <h6 class="fw-bold text-dark mb-2">Tanda Tangan Peminjam</h6>
                 @if ($pemakaian->ttd)
                 <div class="signature-box mt-2">
-                    <img src="{{ asset('storage/' . $pemakaian->ttd) }}" alt="Tanda Tangan" style="max-height: 120px; max-width: 260px;" onerror="this.src='{{ asset($pemakaian->ttd) }}'">
+                    <img src="{{ $pemakaian->ttd_url }}" alt="Tanda Tangan" style="max-height: 120px; max-width: 260px;" onerror="this.onerror=null; this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('d-none');">
+                    <div class="d-none text-muted font-12 py-2">
+                        <i class="fas fa-exclamation-triangle text-warning me-1"></i> Berkas tanda tangan peminjam tidak ditemukan di server.
+                    </div>
                 </div>
                 @else
                 <p class="text-muted small mb-0">Belum ada tanda tangan yang tersimpan.</p>

@@ -178,7 +178,7 @@
             <tr>
                 <td class="signature">
                     @if($peminjaman->ttd)
-                    <img src="{{ asset('storage/app/public/' . $peminjaman->ttd) }}" alt="Tanda Tangan Peminjam">
+                    <img src="{{ $peminjaman->ttd_url }}" alt="Tanda Tangan Peminjam" onerror="this.onerror=null; this.style.display='none';">
                     @else
                     <p>______________________</p>
                     @endif
@@ -187,7 +187,7 @@
                 </td>
                 <td class="signature">
                     @if($peminjaman->ttd)
-                    <img src="{{ asset('storage/app/public/' . $peminjaman->ttd) }}" alt="Tanda Tangan Peminjam">
+                    <img src="{{ $peminjaman->ttd_url }}" alt="Tanda Tangan Peminjam" onerror="this.onerror=null; this.style.display='none';">
                     @else
                     @endif
                     <p class="tight-spacing">

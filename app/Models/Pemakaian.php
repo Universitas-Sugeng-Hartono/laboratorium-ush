@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use App\Traits\LogsActivity;
 
 class Pemakaian extends Model
@@ -173,5 +174,17 @@ class Pemakaian extends Model
     {
         $this->restoreAlatStock();
         $this->restoreBahanStock();
+    }
+
+    public function getTtdUrlAttribute()
+    {
+        if (!$this->ttd) {
+            return null;
+        }
+        if (Str::startsWith($this->ttd, ['http://', 'https://', 'data:image'])) {
+            return $this->ttd;
+        }
+        $cleanPath = preg_replace('#^/?(storage/app/public/|storage/)#', '', $this->ttd);
+        return asset('storage/' . $cleanPath);
     }
 }

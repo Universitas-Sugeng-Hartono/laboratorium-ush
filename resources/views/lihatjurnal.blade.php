@@ -277,9 +277,13 @@
                         <div>
                             @if ($jurnal->ttd)
                                 <div class="signature-preview-card">
-                                    <img src="{{ Str::startsWith($jurnal->ttd, 'signatures/') ? asset('storage/' . $jurnal->ttd) : asset($jurnal->ttd) }}" 
+                                    <img src="{{ $jurnal->ttd_url }}" 
                                          alt="Tanda Tangan Dosen" 
-                                         style="max-height: 120px; max-width: 280px; object-fit: contain;">
+                                         style="max-height: 120px; max-width: 280px; object-fit: contain;"
+                                         onerror="this.onerror=null; this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('d-none');">
+                                    <div class="d-none text-muted font-11 py-1">
+                                        <i class="fas fa-exclamation-triangle text-warning me-1"></i> Berkas tanda tangan tidak ditemukan di server.
+                                    </div>
                                     <div class="pt-2 border-top mt-2">
                                         <span class="d-block fw-bold text-dark font-13">{{ $jurnal->matkulId->dosen ?? 'Dosen Pengampu' }}</span>
                                         <span class="d-block text-muted font-11">{{ \Carbon\Carbon::parse($jurnal->created_at)->locale('id')->isoFormat('D MMMM Y, H:i') }} WIB</span>

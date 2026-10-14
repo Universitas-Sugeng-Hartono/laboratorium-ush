@@ -34,6 +34,44 @@ Route::get('/admin', [LoginController::class, 'getLogin'])->name('admin.login');
 Route::get('/login', [LoginController::class, 'getLogin'])->name('login');
 Route::post('/login', [LoginController::class, 'postLogin'])->middleware('throttle:5,1');
 Route::post('/logout', [LoginController::class, 'postLogout'])->name('auth.login');
+
+// Fallback route untuk berkas storage publik jika symlink public/storage belum dibuat / terputus di server hosting
+Route::get('/storage/{path}', function ($path) {
+    if (str_contains($path, '..')) {
+        abort(404);
+    }
+    $disk = \Illuminate\Support\Facades\Storage::disk('public');
+    if (!$disk->exists($path)) {
+        abort(404);
+    }
+    return response()->file($disk->path($path));
+})->where('path', '.*')->name('storage.fallback');
+
+// Fallback route untuk URL direct signatures & signaturespeminjaman
+Route::get('/signatures/{filename}', function ($filename) {
+    if (str_contains($filename, '..')) {
+        abort(404);
+    }
+    $path = 'signatures/' . $filename;
+    $disk = \Illuminate\Support\Facades\Storage::disk('public');
+    if ($disk->exists($path)) {
+        return response()->file($disk->path($path));
+    }
+    abort(404);
+})->where('filename', '[A-Za-z0-9_\.-]+');
+
+Route::get('/signaturespeminjaman/{filename}', function ($filename) {
+    if (str_contains($filename, '..')) {
+        abort(404);
+    }
+    $path = 'signaturespeminjaman/' . $filename;
+    $disk = \Illuminate\Support\Facades\Storage::disk('public');
+    if ($disk->exists($path)) {
+        return response()->file($disk->path($path));
+    }
+    abort(404);
+})->where('filename', '[A-Za-z0-9_\.-]+');
+
 Route::middleware('auth')->group(function () {
     Route::get('/home', [App\Http\Controllers\DashboardController::class, 'index'])->name('layout.app');
 

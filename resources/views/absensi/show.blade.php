@@ -262,7 +262,10 @@
                 <h6 class="fw-bold text-dark mb-2"><i class="fas fa-signature text-primary me-1"></i> Tanda Tangan Digital Tamu</h6>
                 @if ($absen->ttd)
                 <div class="signature-box mt-2">
-                    <img src="{{ asset('storage/' . $absen->ttd) }}" alt="Tanda Tangan Tamu" style="max-height: 130px; max-width: 280px;" onerror="this.src='{{ asset($absen->ttd) }}'">
+                    <img src="{{ $absen->ttd_url }}" alt="Tanda Tangan Tamu" style="max-height: 130px; max-width: 280px;" onerror="this.onerror=null; this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.classList.remove('d-none');">
+                    <div class="d-none text-muted font-12 py-2">
+                        <i class="fas fa-exclamation-triangle text-warning me-1"></i> Berkas tanda tangan tamu tidak ditemukan di server.
+                    </div>
                 </div>
                 @else
                 <p class="text-muted small mb-0 fst-italic">Belum ada tanda tangan digital yang tercatat.</p>

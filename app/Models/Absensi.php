@@ -32,4 +32,16 @@ class Absensi extends Model
     {
         return $this->belongsTo(Laboratorium::class, 'lab_id');
     }
+
+    public function getTtdUrlAttribute()
+    {
+        if (!$this->ttd) {
+            return null;
+        }
+        if (Str::startsWith($this->ttd, ['http://', 'https://', 'data:image'])) {
+            return $this->ttd;
+        }
+        $cleanPath = preg_replace('#^/?(storage/app/public/|storage/)#', '', $this->ttd);
+        return asset('storage/' . $cleanPath);
+    }
 }
