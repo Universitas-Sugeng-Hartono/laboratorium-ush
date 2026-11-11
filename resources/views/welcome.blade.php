@@ -159,6 +159,9 @@
                 </a>
 
                 <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                    <a href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#modalOrganisasi" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold text-nowrap">
+                        <i class="fa fa-sitemap me-1"></i> Struktur Organisasi
+                    </a>
                     <a href="/" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold text-nowrap">
                         <i class="fa fa-arrow-left me-1"></i> Ke Portal Utama
                     </a>
@@ -395,6 +398,38 @@
         });
     </script>
     @endif
+    <!-- Modal Struktur Organisasi -->
+    <div class="modal fade" id="modalOrganisasi" tabindex="-1" aria-labelledby="modalOrganisasiLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+                <div class="modal-header border-bottom py-2 py-sm-3 px-3 px-md-4 bg-white d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2" style="min-width: 0;">
+                        <div class="modal-header-icon d-none d-sm-flex align-items-center justify-content-center rounded-3 bg-primary-subtle text-primary" style="width: 36px; height: 36px; font-size: 15px; flex-shrink: 0;">
+                            <i class="fa fa-sitemap"></i>
+                        </div>
+                        <div class="text-truncate">
+                            <h5 class="modal-title fw-bold text-dark mb-0 font-15 font-md-16 d-flex align-items-center gap-2" id="modalOrganisasiLabel">
+                                <i class="fa fa-sitemap text-primary d-inline d-sm-none font-13"></i>
+                                <span>Struktur Organisasi</span>
+                            </h5>
+                            <small class="text-muted font-11 d-block text-truncate">Laboratorium Terpadu & IST USH</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-2">
+                        <a href="{{ route('struktur.organisasi') }}" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-1 text-nowrap d-inline-flex align-items-center gap-1 font-12" title="Buka Halaman Penuh">
+                            <i class="fa fa-arrow-up-right-from-square font-11"></i>
+                            <span class="d-none d-sm-inline">Buka Penuh</span>
+                            <span class="d-inline d-sm-none">Penuh</span>
+                        </a>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                </div>
+                <div class="modal-body p-2 p-md-3 bg-light">
+                    @include('partials.organisasi-chart')
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

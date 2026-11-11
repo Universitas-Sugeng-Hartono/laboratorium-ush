@@ -29,6 +29,11 @@ class HalamanController extends Controller
         return view('halamanawal');
     }
 
+    public function StrukturOrganisasi()
+    {
+        return view('organisasi');
+    }
+
 
 
     public function JadwalLab(Request $request)

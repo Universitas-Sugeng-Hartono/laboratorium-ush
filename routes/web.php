@@ -15,6 +15,7 @@ use App\Http\Controllers\{TaController, AbsensiController, HalamanController, Us
 */
 
 Route::get('/', [HalamanController::class, 'PilihanCourse'])->name('awal');
+Route::get('/struktur-organisasi', [HalamanController::class, 'StrukturOrganisasi'])->name('struktur.organisasi');
 Route::get('/jadwallab', [HalamanController::class, 'JadwalLab'])->name('jadwallab');
 Route::get('/tamuumum', [HalamanController::class, 'TamuLab'])->name('tamuumum');
 Route::post('/tamu/store', [HalamanController::class, 'storeTamu']);
