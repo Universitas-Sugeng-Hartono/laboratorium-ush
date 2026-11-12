@@ -1182,7 +1182,7 @@
         'salsabila': {
             name: 'Salsabila Amalia Putri Bumi, S.T.P., M.T.P.',
             role: 'Deputi Lab FITH',
-            dept: 'Fakultas Ilmu Terapan & Halal (FITH)',
+            dept: 'Fakultas Ilmu Terapan & Humaniora (FITH)',
             labs: ['Lab Mikrobiologi', 'Lab Kuliner', 'Lab Kimia', 'Lab AZG', 'Lab PSG', 'Lab TekPang'],
             desc: 'Mengoordinasikan pengelolaan laboratorium FITH, meliputi penjadwalan, inventarisasi bahan dan alat, serta kalibrasi dan pemeliharaan instrumen. Memastikan penerapan standar K3 dan kebersihan laboratorium, mengawasi kinerja laboran, dan menyusun laporan operasional secara berkala.',
             badge: 'Deputi Lab FITH',
